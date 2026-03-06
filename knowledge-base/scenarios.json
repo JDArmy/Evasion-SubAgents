@@ -297,6 +297,26 @@
       },
       "status": "compiled",
       "created_at": "2026-03-06T11:26:00.000000"
+    },
+    {
+      "id": "evasion_002",
+      "name": "Evasion Loader 002",
+      "base_loader": "loader_035",
+      "evasion_techniques": ["T003", "T011", "T021", "T027"],
+      "components": {
+        "storage": "embedded_encrypted_rc4",
+        "allocator": "VirtualAlloc",
+        "copier": "memcpy",
+        "executor": "callback_flsalloc"
+      },
+      "evasion_details": {
+        "T003_api_hashing": "API resolution by hash from kernel32 exports",
+        "T011_sandbox_detection": "CPU cores, RAM size, disk size checks",
+        "T021_blockdlls": "PROCESS_MITIGATION_BINARY_SIGNATURE_POLICY enabled",
+        "T027_rc4_encryption": "RC4 encrypted shellcode with key 'EvasionKey2024!'"
+      },
+      "status": "compiled",
+      "created_at": "2026-03-06T11:36:00.000000"
     }
   ]
 }
