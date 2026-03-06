@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(pip show:*)",
+      "Bash(echo:*)",
+      "Bash(gh:*)",
+      "Bash(xxd:*)",
+      "Bash(x86_64-w64-mingw32-gcc:*)",
+      "Bash(sed:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(ls:*)"
+    ]
+  }
+}

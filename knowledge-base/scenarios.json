@@ -1,0 +1,282 @@
+{
+  "version": "1.0",
+  "last_updated": "2026-03-05T20:04:41.974595",
+  "scenarios": [
+    {
+      "id": "scenario_001",
+      "name": "Loader 001",
+      "components": {
+        "storage": "embedded",
+        "allocator": "VirtualAlloc",
+        "copier": "memcpy",
+        "executor": "function_pointer"
+      },
+      "status": "validated",
+      "created_at": "2026-03-05T20:04:41.973592"
+    },
+    {
+      "id": "scenario_002",
+      "name": "Loader 002",
+      "components": {
+        "storage": "embedded",
+        "allocator": "VirtualAlloc",
+        "copier": "memcpy",
+        "executor": "CreateThread"
+      },
+      "status": "validated",
+      "created_at": "2026-03-05T20:04:41.973592"
+    },
+    {
+      "id": "scenario_003",
+      "name": "Loader 003",
+      "components": {
+        "storage": "embedded",
+        "allocator": "VirtualAlloc",
+        "copier": "memcpy",
+        "executor": "callback_enumwindows"
+      },
+      "status": "validated",
+      "created_at": "2026-03-05T20:04:41.973592"
+    },
+    {
+      "id": "scenario_004",
+      "name": "Loader 004",
+      "components": {
+        "storage": "embedded",
+        "allocator": "VirtualAlloc",
+        "copier": "memcpy",
+        "executor": "callback_enumchildwindows"
+      },
+      "status": "validated",
+      "created_at": "2026-03-05T20:04:41.973592"
+    },
+    {
+      "id": "scenario_005",
+      "name": "Loader 005",
+      "components": {
+        "storage": "embedded",
+        "allocator": "VirtualAlloc",
+        "copier": "memcpy",
+        "executor": "APC"
+      },
+      "status": "validated",
+      "created_at": "2026-03-05T20:04:41.973592"
+    },
+    {
+      "id": "scenario_006",
+      "name": "Loader 006",
+      "components": {
+        "storage": "embedded",
+        "allocator": "VirtualAlloc",
+        "copier": "memcpy",
+        "executor": "Fiber"
+      },
+      "status": "validated",
+      "created_at": "2026-03-05T20:04:41.973592"
+    },
+    {
+      "id": "scenario_007",
+      "name": "Loader 007",
+      "components": {
+        "storage": "embedded",
+        "allocator": "VirtualAlloc",
+        "copier": "memcpy",
+        "executor": "callback_timer"
+      },
+      "status": "validated",
+      "created_at": "2026-03-05T20:04:41.973592"
+    },
+    {
+      "id": "scenario_008",
+      "name": "Loader 008",
+      "components": {
+        "storage": "embedded",
+        "allocator": "HeapCreate",
+        "copier": "memcpy",
+        "executor": "function_pointer"
+      },
+      "status": "validated",
+      "created_at": "2026-03-05T20:04:41.973592"
+    },
+    {
+      "id": "scenario_009",
+      "name": "Loader 009",
+      "components": {
+        "storage": "embedded",
+        "allocator": "HeapCreate",
+        "copier": "memcpy",
+        "executor": "CreateThread"
+      },
+      "status": "validated",
+      "created_at": "2026-03-05T20:04:41.973592"
+    },
+    {
+      "id": "scenario_010",
+      "name": "Loader 010",
+      "components": {
+        "storage": "embedded",
+        "allocator": "HeapCreate",
+        "copier": "memcpy",
+        "executor": "callback_enumwindows"
+      },
+      "status": "validated",
+      "created_at": "2026-03-05T20:04:41.973592"
+    },
+    {
+      "id": "scenario_011",
+      "name": "Loader 011",
+      "components": {
+        "storage": "embedded",
+        "allocator": "HeapCreate",
+        "copier": "memcpy",
+        "executor": "callback_enumchildwindows"
+      },
+      "status": "validated",
+      "created_at": "2026-03-05T20:04:41.973592"
+    },
+    {
+      "id": "scenario_012",
+      "name": "Loader 012",
+      "components": {
+        "storage": "embedded",
+        "allocator": "HeapCreate",
+        "copier": "memcpy",
+        "executor": "APC"
+      },
+      "status": "validated",
+      "created_at": "2026-03-05T20:04:41.973592"
+    },
+    {
+      "id": "scenario_013",
+      "name": "Loader 013",
+      "components": {
+        "storage": "embedded",
+        "allocator": "HeapCreate",
+        "copier": "memcpy",
+        "executor": "Fiber"
+      },
+      "status": "validated",
+      "created_at": "2026-03-05T20:04:41.973592"
+    },
+    {
+      "id": "scenario_014",
+      "name": "Loader 014",
+      "components": {
+        "storage": "embedded",
+        "allocator": "HeapCreate",
+        "copier": "memcpy",
+        "executor": "callback_timer"
+      },
+      "status": "validated",
+      "created_at": "2026-03-05T20:04:41.973592"
+    },
+    {
+      "id": "scenario_020",
+      "name": "Loader 020",
+      "components": {
+        "storage": "embedded",
+        "allocator": "HeapCreate",
+        "copier": "memcpy",
+        "executor": "callback_timer"
+      },
+      "status": "validated",
+      "created_at": "2026-03-05T20:04:41.973592"
+    },
+    {
+      "id": "scenario_022",
+      "name": "Loader 022",
+      "components": {
+        "storage": "embedded",
+        "allocator": "HeapCreate",
+        "copier": "memcpy",
+        "executor": "callback_enumchildwindows"
+      },
+      "status": "validated",
+      "created_at": "2026-03-05T20:04:41.973592"
+    },
+    {
+      "id": "scenario_023",
+      "name": "Loader 023",
+      "components": {
+        "storage": "embedded",
+        "allocator": "VirtualAlloc",
+        "copier": "memcpy",
+        "executor": "function_pointer"
+      },
+      "status": "validated",
+      "created_at": "2026-03-05T20:04:41.973592"
+    },
+    {
+      "id": "scenario_024",
+      "name": "Loader 024",
+      "components": {
+        "storage": "embedded",
+        "allocator": "VirtualAlloc",
+        "copier": "memcpy",
+        "executor": "callback_timer"
+      },
+      "status": "validated",
+      "created_at": "2026-03-05T20:04:41.973592"
+    },
+    {
+      "id": "scenario_025",
+      "name": "Loader 025",
+      "components": {
+        "storage": "embedded",
+        "allocator": "VirtualAlloc",
+        "copier": "memcpy",
+        "executor": "callback_enumwindows"
+      },
+      "status": "validated",
+      "created_at": "2026-03-05T20:04:41.973592"
+    },
+    {
+      "id": "scenario_026",
+      "name": "Loader 026",
+      "components": {
+        "storage": "embedded",
+        "allocator": "HeapCreate",
+        "copier": "memcpy",
+        "executor": "callback_enumwindows"
+      },
+      "status": "validated",
+      "created_at": "2026-03-05T20:04:41.973592"
+    },
+    {
+      "id": "scenario_027",
+      "name": "Loader 027",
+      "components": {
+        "storage": "embedded",
+        "allocator": "HeapCreate",
+        "copier": "memcpy",
+        "executor": "Fiber"
+      },
+      "status": "validated",
+      "created_at": "2026-03-05T20:04:41.973592"
+    },
+    {
+      "id": "scenario_028",
+      "name": "Loader 028",
+      "components": {
+        "storage": "embedded",
+        "allocator": "VirtualAlloc",
+        "copier": "memcpy",
+        "executor": "Fiber"
+      },
+      "status": "validated",
+      "created_at": "2026-03-05T20:04:41.973592"
+    },
+    {
+      "id": "scenario_029",
+      "name": "Loader 029",
+      "components": {
+        "storage": "embedded",
+        "allocator": "VirtualAlloc",
+        "copier": "memcpy",
+        "executor": "APC"
+      },
+      "status": "validated",
+      "created_at": "2026-03-05T20:04:41.973592"
+    }
+  ]
+}
