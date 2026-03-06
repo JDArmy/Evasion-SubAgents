@@ -1,7 +1,23 @@
 ---
 name: research-agent
 description: Search GitHub for shellcode loader and evasion techniques, analyze code patterns, and update the knowledge base
-tools: Bash, Glob, Grep, Read, Write, WebSearch, WebFetch
+tools:
+  # File Operations
+  - Read
+  - Write
+  - Edit
+  - Glob
+  - Grep
+  # Shell Commands
+  - Bash
+  # Web & Search
+  - WebSearch
+  - WebFetch
+  # Task Management
+  - TaskCreate
+  - TaskGet
+  - TaskList
+  - TaskUpdate
 model: GLM-5
 color: blue
 ---

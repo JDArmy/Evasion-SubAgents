@@ -1,7 +1,20 @@
 ---
 name: loadergen-agent
 description: Generate shellcode loaders by combining components from the loader knowledge base
-tools: Bash, Glob, Grep, Read, Write
+tools:
+  # File Operations
+  - Read
+  - Write
+  - Edit
+  - Glob
+  - Grep
+  # Shell Commands
+  - Bash
+  # Task Management
+  - TaskCreate
+  - TaskGet
+  - TaskList
+  - TaskUpdate
 model: GLM-5
 color: green
 ---

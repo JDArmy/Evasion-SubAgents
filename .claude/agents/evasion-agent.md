@@ -1,7 +1,20 @@
 ---
 name: evasion-agent
 description: Integrate evasion techniques into existing shellcode loaders
-tools: Bash, Glob, Grep, Read, Write
+tools:
+  # File Operations
+  - Read
+  - Write
+  - Edit
+  - Glob
+  - Grep
+  # Shell Commands
+  - Bash
+  # Task Management
+  - TaskCreate
+  - TaskGet
+  - TaskList
+  - TaskUpdate
 model: GLM-5
 color: red
 ---
