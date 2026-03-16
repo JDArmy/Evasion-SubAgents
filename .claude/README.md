@@ -9,6 +9,7 @@
 1. **research-agent**: 使用 gh 工具搜索 shellcode loader 或 evasion 相关代码，将技术点分类总结，写入知识库
 2. **loadergen-agent**: 从知识库里提取技术点，实现 shellcode loader 编写
 3. **evasion-agent**: 对现有 loader 进行免杀技术集成
+4. **c2-evasion-agent**: 分析 C2 框架源码，查找检测规则，直接修改 C2 源码实现免杀
 
 ## 目录结构
 
@@ -21,11 +22,13 @@
 ├── commands/         # 用户可调用命令
 │   ├── research.md
 │   ├── loader_generate.md
-│   └── evasion_integrate.md
+│   ├── evasion_integrate.md
+│   └── c2_evasion.md
 ├── skills/           # Agent 技能详细说明
 │   ├── research.md
 │   ├── loader_generate.md
-│   └── evasion_integrate.md
+│   ├── evasion_integrate.md
+│   └── c2_evasion.md
 ├── settings.local.json
 └── README.md
 
@@ -48,3 +51,4 @@ output/               # 输出目录
 - `/research` - 搜索并研究技术
 - `/loader_generate` - 生成 shellcode loader
 - `/evasion_integrate` - 对现有 loader 集成免杀技术
+- `/c2_evasion` - 对 C2 框架进行免杀改造

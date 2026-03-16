@@ -11,6 +11,7 @@
 | **research-agent** | 搜索 GitHub 技术，分析代码模式，更新知识库 | `research` |
 | **loadergen-agent** | 从 loader 知识库组合组件，生成 loader | `loader_generate` |
 | **evasion-agent** | 将 evasion 技术集成到现有 loader | `evasion_integrate` |
+| **c2-evasion-agent** | 分析 C2 框架源码，查找检测规则，修改源码免杀 | `c2_evasion` |
 
 
 ## 环境要求
@@ -150,6 +151,7 @@ nano ~/.claude/CLAUDE.md
 # /research - Search GitHub for shellcode loader and evasion techniques
 # /loader_generate - Generate shellcode loaders
 # /evasion_integrate - Integrate evasion techniques
+# /c2_evasion - C2 framework evasion analysis and modification
 ```
 
 ## 架构
@@ -162,17 +164,21 @@ evasion-agent-teams/
 │   ├── research-agent.md        # 研究技术
 │   ├── loadergen-agent.md       # 生成 loader
 │   └── evasion-agent.md         # 集成 evasion
+│   └── c2-evasion-agent.md      # C2 免杀
 ├── skills/
 │   ├── research/
 │   │   └── SKILL.md             # 搜索分析技能
 │   ├── loader_generate/
 │   │   └── SKILL.md             # loader 生成技能
-│   └── evasion_integrate/
-│       └── SKILL.md             # evasion 集成技能
+│   ├── evasion_integrate/
+│   │   └── SKILL.md             # evasion 集成技能
+│   └── c2_evasion/
+│       └── SKILL.md             # C2 免杀技能
 ├── commands/
 │   ├── research.md              # /research
 │   ├── loader_generate.md       # /loader_generate
-│   └── evasion_integrate.md     # /evasion_integrate
+│   ├── evasion_integrate.md     # /evasion_integrate
+│   └── c2_evasion.md            # /c2_evasion
 ├── lib/
 │   └── knowledge_manager.py
 ├── knowledge-base/
@@ -232,6 +238,22 @@ evasion-agent-teams/
 4. 集成技术到代码
 5. 编译测试
 6. 报告变更
+
+### /c2_evasion
+
+对 C2 框架源码进行免杀改造。
+
+```bash
+/c2_evasion /path/to/c2/source          # 分析并修改 C2 源码
+/c2_evasion /path/to/c2 --rules-only    # 仅查找检测规则，不修改
+```
+
+**流程：**
+1. 分析 C2 框架源码结构
+2. 搜索 YARA/Sigma 等检测规则
+3. 识别特征字符串和模式
+4. 修改源码规避检测
+5. 验证修改后功能正常
 
 ## 知识库
 
@@ -383,6 +405,7 @@ python lib/knowledge_manager.py import --input backup.json
 | research-agent | 编译/执行外部代码，使用外部 shellcode | 分析模式，更新知识库 |
 | loadergen-agent | 使用外部代码，使用外部 shellcode | 仅使用 samples/calc.bin |
 | evasion-agent | 使用外部代码，执行恶意 shellcode | 仅修改用户代码，仅用 calc.bin 测试 |
+| c2-evasion-agent | 执行恶意操作，破坏性修改 | 分析源码，修改规避特征 |
 
 ## 故障排除
 
@@ -450,15 +473,18 @@ xxd samples/calc.bin | head -5
 ├── agents/
 │   ├── research-agent.md
 │   ├── loadergen-agent.md
-│   └── evasion-agent.md
+│   ├── evasion-agent.md
+│   └── c2-evasion-agent.md
 ├── skills/
 │   ├── research.md
 │   ├── loader_generate.md
-│   └── evasion_integrate.md
+│   ├── evasion_integrate.md
+│   └── c2_evasion.md
 ├── commands/
 │   ├── research.md
 │   ├── loader_generate.md
-│   └── evasion_integrate.md
+│   ├── evasion_integrate.md
+│   └── c2_evasion.md
 └── settings.local.json
 ```
 
