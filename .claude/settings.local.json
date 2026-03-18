@@ -30,7 +30,9 @@
       "Bash(*cd*cat*)",
       "Bash(*cd*mkdir*)",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(x86_64-w64-mingw32-objdump -x output/evasion_001.exe)",
+      "Bash(objdump -x \"D:/Dev/Agent/Evasion-SubAgents/output/evasion_001.exe\")"
     ]
   }
 }

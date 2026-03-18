@@ -1,33 +1,55 @@
 ---
-description: C2 framework evasion analysis and modification. Analyzes C2 source code, finds detection rules (YARA, Sigma, etc.), and directly modifies C2 source code to evade detection.
+description: Analyze C2 framework source code, find detection rules (YARA, Sigma, etc.), and modify source to evade detection. Triggers on "C2 evasion", "analyze C2", "YARA", "modify C2", "bypass detection", "C2免杀".
 argument-hint: Required: path to C2 source (e.g., "/path/to/c2")
 ---
 
 # C2 Evasion Command
 
-Launch the c2-evasion-agent to analyze and modify C2 framework source code for detection evasion.
+Launch the c2-evasion-agent to analyze and modify C2 framework source code.
 
 ## Usage
 
 ```bash
 /c2_evasion /path/to/c2/source
+/c2_evasion ./mythic-agent
+/c2_evasion ./sliver-client
 ```
 
 ## What This Command Does
 
-1. **Spawns c2-evasion-agent** as a subagent
-2. **Identifies C2 framework** type and components
-3. **Searches detection rules** (YARA, Sigma, Network) via `gh` CLI
-4. **Modifies source code** based on found detection rules
+1. **Identifies C2 framework** type and components (implant/server)
+2. **Searches detection rules** (YARA, Sigma, Network) via `gh` CLI
+3. **Maps patterns to source** files and line numbers
+4. **Modifies source code** based on detection rules
 5. **Documents all changes** in `./yara/<c2_name>/`
 
-## Execution
+## Priority Framework
 
-Use the Agent tool to spawn the c2-evasion-agent:
+| Priority | Component | Action |
+|----------|-----------|--------|
+| 1 (HIGHEST) | Implant/Beacon/Agent | MODIFY |
+| 2 (HIGH) | Network Exposure | MODIFY |
+| 3 (SKIP) | Internal Strings | SKIP |
+
+## Output
 
 ```
-Agent(
-  subagent_type: "c2-evasion-agent",
-  prompt: "Analyze and modify C2 source code at: <path>"
-)
+./yara/<c2_name>/
+├── yara_rules/          # Found YARA rules
+├── sigma_rules/         # Found Sigma rules
+├── network_rules/       # Found network rules
+├── detection_analysis.md
+└── modifications_summary.md
 ```
+
+## Security
+
+- **ONLY** modify code in user-provided path
+- **NEVER** run or test modified binaries
+- Document ALL changes
+
+## Agent
+
+Spawns `c2-evasion-agent` subagent for comprehensive analysis and modification.
+
+See `c2_evasion` skill for detailed workflow.

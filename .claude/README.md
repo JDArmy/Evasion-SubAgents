@@ -1,54 +1,133 @@
-# Evasion Agent Teams 项目说明
+# Evasion Agent Teams
 
-## 项目目标
+An automated security research toolkit for defensive purposes.
 
-构建一个免杀 subAgent teams，主 agent 是 Claude Code。所有 subagent 都接入 Claude Code，通过对话调用这些子 agent。
+## Project Goal
+
+Build an automated sub-agent team for security research, integrated with Claude Code. All subagents work through Claude Code conversation.
+
+## Authorization Context
+
+**AUTHORIZED USE CASE: Defensive Security Research**
+
+This toolkit is used for:
+- Understanding attacker techniques to improve detection capabilities
+- Developing security product testing methodologies
+- Red team / blue team training exercises
+- Security product evaluation and improvement
 
 ## Sub Agents
 
-1. **research-agent**: 使用 gh 工具搜索 shellcode loader 或 evasion 相关代码，将技术点分类总结，写入知识库
-2. **loadergen-agent**: 从知识库里提取技术点，实现 shellcode loader 编写
-3. **evasion-agent**: 对现有 loader 进行免杀技术集成
-4. **c2-evasion-agent**: 分析 C2 框架源码，查找检测规则，直接修改 C2 源码实现免杀
+| Agent | Description | Trigger |
+|-------|-------------|---------|
+| **research-agent** | Search GitHub for techniques, analyze code, update knowledge base | `/research` |
+| **loadergen-agent** | Generate shellcode loaders from knowledge base | `/loader_generate` |
+| **evasion-agent** | Integrate evasion techniques into existing loaders | `/evasion_integrate` |
+| **c2-evasion-agent** | Analyze C2 source, find detection rules, modify code | `/c2_evasion` |
 
-## 目录结构
+## Commands
+
+### `/research [query]`
+Search GitHub for security techniques and update knowledge base.
+
+```bash
+/research                        # Interactive mode
+/research "syscall evasion"      # Search specific technique
+/research "AMSI bypass C++"      # With language filter
+```
+
+### `/loader_generate [options]`
+Generate shellcode loaders from knowledge base components.
+
+```bash
+/loader_generate                      # Single random loader
+/loader_generate 5                    # Batch generate 5
+/loader_generate --executor callback  # Specific executor
+/loader_generate --complexity medium  # Filter complexity
+```
+
+### `/evasion_integrate <path> [options]`
+Add evasion techniques to an existing loader.
+
+```bash
+/evasion_integrate ./loader.c                        # Auto-select
+/evasion_integrate ./loader.c --type api_obfuscation # Specific type
+/evasion_integrate ./loader.c --complexity simple    # Filter
+```
+
+### `/c2_evasion <path>`
+Analyze C2 framework and modify source for detection evasion.
+
+```bash
+/c2_evasion ./sliver-client
+/c2_evasion ./mythic-agent
+```
+
+## Directory Structure
 
 ```
 .claude/
-├── agents/           # Sub-agent 定义
+├── agents/           # Sub-agent definitions
 │   ├── research-agent.md
 │   ├── loadergen-agent.md
-│   └── evasion-agent.md
-├── commands/         # 用户可调用命令
+│   ├── evasion-agent.md
+│   └── c2-evasion-agent.md
+├── commands/         # User commands
 │   ├── research.md
 │   ├── loader_generate.md
 │   ├── evasion_integrate.md
 │   └── c2_evasion.md
-├── skills/           # Agent 技能详细说明
+├── skills/           # Detailed skill instructions
 │   ├── research.md
 │   ├── loader_generate.md
 │   ├── evasion_integrate.md
 │   └── c2_evasion.md
-├── settings.local.json
 └── README.md
 
-knowledge-base/       # 知识库
+knowledge-base/       # Knowledge storage
 ├── loader_techniques.json
 ├── evasion_techniques.json
 └── scenarios.json
 
-lib/                  # 工具库
+lib/                  # Utility scripts
 └── knowledge_manager.py
 
-samples/              # 测试样本
+samples/              # Test samples
 └── calc.bin
 
-output/               # 输出目录
+output/               # Generated outputs
 ```
 
-## 使用方式
+## Knowledge Base
 
-- `/research` - 搜索并研究技术
-- `/loader_generate` - 生成 shellcode loader
-- `/evasion_integrate` - 对现有 loader 集成免杀技术
-- `/c2_evasion` - 对 C2 框架进行免杀改造
+The knowledge base stores techniques discovered by research-agent:
+
+- **loader_techniques.json**: Loading methods (allocation, execution, storage)
+- **evasion_techniques.json**: Evasion methods (API obfuscation, anti-analysis, etc.)
+- **scenarios.json**: Record of generated loader combinations
+
+### KB Commands
+
+```bash
+# List techniques
+python lib/knowledge_manager.py list-evasion
+python lib/knowledge_manager.py get-components
+
+# Add technique
+python lib/knowledge_manager.py add-evasion --name "..." --type "api_obfuscation"
+
+# Check duplicates
+python lib/knowledge_manager.py dedup-check --name "..."
+```
+
+## Security Rules
+
+1. **NEVER** run or test generated executables - compilation success is sufficient
+2. **ONLY** use `samples/calc.bin` for loader testing
+3. **ONLY** modify code in user-provided paths
+4. **ALWAYS** document all changes made
+5. Use relative paths (not absolute) for portability
+
+## License
+
+For authorized defensive security research only.

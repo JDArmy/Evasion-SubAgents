@@ -1,0 +1,38 @@
+{
+  "skill_name": "research",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "帮我搜索 GitHub 上的 shellcode loader 项目，分析其中的内存分配技术",
+      "expected_output": "搜索 GitHub 项目，分析内存分配技术，将结果保存到知识库",
+      "expectations": [
+        "使用 gh 命令搜索 GitHub",
+        "识别内存分配技术（VirtualAlloc, HeapCreate, NtAllocateVirtualMemory 等）",
+        "将分析结果保存到知识库",
+        "输出技术摘要"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "研究 AMSI bypass 的实现方法",
+      "expected_output": "搜索 AMSI bypass 技术，分析代码实现，记录到知识库",
+      "expectations": [
+        "搜索 AMSI bypass 相关代码",
+        "分析技术实现方式",
+        "分类保存到知识库",
+        "提供复杂度评估"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "find syscall usage patterns in C/C++ code on GitHub",
+      "expected_output": "Search syscall patterns, analyze and document",
+      "expectations": [
+        "Use English search terms for broader results",
+        "Identify direct syscall and indirect syscall patterns",
+        "Document SSN extraction methods",
+        "Save to knowledge base with proper categorization"
+      ]
+    }
+  ]
+}

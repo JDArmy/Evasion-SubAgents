@@ -1,6 +1,6 @@
 {
   "version": "1.1",
-  "last_updated": "2026-03-06T14:20:53.200021",
+  "last_updated": "2026-03-18T11:37:20.738749",
   "techniques": [
     {
       "id": "T001",
@@ -2483,6 +2483,339 @@
       ],
       "id": "T128",
       "created_at": "2026-03-06T14:20:53.199021",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "BYOVD - Driver Loading via SCM",
+      "type": "privilege_evasion",
+      "evasion_type": "privilege_evasion",
+      "description": "Bring Your Own Vulnerable Driver technique: Load a legitimately signed but vulnerable kernel driver using Windows Service Control Manager API. The driver is dropped to disk, registered as a kernel service, and started to gain kernel-level execution. This technique bypasses security software by operating at Ring 0. Common vulnerable drivers include RTCore64.sys, DBUtil_2_3.sys, gdrv.sys, and Process Hacker driver. Requires administrator privileges.",
+      "complexity": "complex",
+      "detection_risk": "medium",
+      "apis": [
+        "OpenSCManagerA",
+        "CreateServiceA",
+        "StartServiceA",
+        "DeviceIoControl",
+        "CreateFileA"
+      ],
+      "references": [
+        "https://github.com/hfiref0x/KDU",
+        "https://github.com/ZeroMemoryEx/Blackout",
+        "https://github.com/BlackSnufkin/BYOVD"
+      ],
+      "id": "T129",
+      "created_at": "2026-03-18T11:33:42.948287",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "BYOVD - Kernel Memory Read/Write Primitives",
+      "type": "privilege_evasion",
+      "evasion_type": "privilege_evasion",
+      "description": "BYOVD technique to achieve arbitrary kernel memory read/write operations through vulnerable driver IOCTLs. Common drivers like RTCore64.sys provide IOCTLs (0x80002048 for read, 0x8000204C for write) that allow reading/writing physical memory addresses. This enables: 1) Disabling DSE (Driver Signature Enforcement) by modifying g_CiOptions in CI.dll, 2) Bypassing PatchGuard by modifying callback pointers, 3) Modifying EPROCESS structures for token manipulation, 4) Disabling ETW/AMSI kernel callbacks.",
+      "complexity": "complex",
+      "detection_risk": "high",
+      "apis": [
+        "DeviceIoControl",
+        "CreateFileA",
+        "NtQuerySystemInformation"
+      ],
+      "references": [
+        "https://github.com/0xJs/BYOVD_read_write_primitive",
+        "https://github.com/Hagrid29/BYOVDKit",
+        "https://github.com/4l3x777/dse_pg_bypass"
+      ],
+      "id": "T130",
+      "created_at": "2026-03-18T11:34:49.610207",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "BYOVD - Process Termination via IOCTL",
+      "type": "privilege_evasion",
+      "evasion_type": "privilege_evasion",
+      "description": "BYOVD technique for terminating protected processes (AV/EDR/PPL) using vulnerable kernel drivers. The attacker loads a driver that exposes IOCTL interfaces for ZwTerminateProcess. Notable drivers and IOCTLs: gmer.sys (Blackout) with IOCTLs 0x9876C004 and 0x9876C094, Process Hacker driver with various process termination IOCTLs, TfSysMon.sys with IOCTL 0xB4A00404. Can bypass PPL (Protected Process Light) protections and terminate normally unkillable security processes.",
+      "complexity": "complex",
+      "detection_risk": "high",
+      "apis": [
+        "ZwOpenProcess",
+        "ZwTerminateProcess",
+        "DeviceIoControl",
+        "CreateFileA"
+      ],
+      "references": [
+        "https://github.com/ZeroMemoryEx/Blackout",
+        "https://github.com/ZeroMemoryEx/Overlord",
+        "https://github.com/BlackSnufkin/BYOVD"
+      ],
+      "id": "T131",
+      "created_at": "2026-03-18T11:34:49.901661",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "BYOVD - DSE Bypass",
+      "type": "privilege_evasion",
+      "evasion_type": "privilege_evasion",
+      "description": "Bypass Driver Signature Enforcement (DSE) using vulnerable drivers. By leveraging kernel memory write primitives from BYOVD, attackers can modify g_CiOptions in CI.dll to disable code integrity checks. This allows loading unsigned malicious drivers. The technique involves: 1) Finding ntoskrnl base, 2) Locating SeValidateImageHeader/SeValidateImageData callbacks, 3) Patching them to return success, 4) Loading unsigned driver. Works on Windows 10/11 but may trigger PatchGuard. Referenced in dse_pg_bypass project.",
+      "complexity": "complex",
+      "detection_risk": "high",
+      "apis": [
+        "NtQuerySystemInformation",
+        "DeviceIoControl",
+        "ZwMapViewOfSection"
+      ],
+      "references": [
+        "https://github.com/4l3x777/dse_pg_bypass",
+        "https://github.com/Hagrid29/BYOVDKit"
+      ],
+      "id": "T132",
+      "created_at": "2026-03-18T11:35:08.329893",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "BYOVD - LSA Protection Bypass",
+      "type": "privilege_evasion",
+      "evasion_type": "privilege_evasion",
+      "description": "Disable LSA Protection (RunAsPPL) using vulnerable drivers to enable LSASS memory dumping. Attackers use kernel memory write capabilities to modify the EPROCESS structure of LSASS: changing SignatureLevel, SectionSignatureLevel, and Type fields to remove PPL protection. Common drivers: DBUtil_2_3.sys (Dell), RTCore64.sys (MSI Afterburner), and gdrv.sys (Gigabyte). After bypassing LSA protection, tools like Mimikatz can dump credentials from LSASS memory. Implemented in tools like Dellicious and PPLKiller.",
+      "complexity": "complex",
+      "detection_risk": "high",
+      "apis": [
+        "NtQuerySystemInformation",
+        "DeviceIoControl",
+        "ZwOpenProcess"
+      ],
+      "references": [
+        "https://github.com/jbaines-r7/dellicious",
+        "https://github.com/Hagrid29/BYOVDKit"
+      ],
+      "id": "T133",
+      "created_at": "2026-03-18T11:35:08.658562",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "BYOVD - Token Manipulation",
+      "type": "privilege_evasion",
+      "evasion_type": "privilege_evasion",
+      "description": "Privilege escalation via token manipulation using vulnerable drivers. Attackers use kernel memory read/write to copy a privileged token (typically SYSTEM) to a target process. The technique involves: 1) Finding EPROCESS of SYSTEM process, 2) Reading token value from EPROCESS+ProcessToken offset, 3) Writing token to target process EPROCESS. Alternatively, can modify Privilege array in TOKEN structure to enable SeDebugPrivilege, SeLoadDriverPrivilege, etc. BYOVDKit provides token copy functionality using DBUtil_2_3.sys and RTCore64.sys.",
+      "complexity": "complex",
+      "detection_risk": "high",
+      "apis": [
+        "NtQuerySystemInformation",
+        "DeviceIoControl",
+        "ZwOpenProcess"
+      ],
+      "references": [
+        "https://github.com/Hagrid29/BYOVDKit",
+        "https://github.com/0xJs/BYOVD_read_write_primitive"
+      ],
+      "id": "T134",
+      "created_at": "2026-03-18T11:35:37.546875",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "BYOVD - ETW/TI Provider Disable",
+      "type": "defense_evasion",
+      "evasion_type": "defense_evasion",
+      "description": "Disable ETW Threat Intelligence provider using vulnerable drivers to evade kernel-level telemetry. The technique uses kernel memory write to modify EtwThreatIntProvRegHandle global variable in ntoskrnl, preventing the ETW TI provider from receiving security events. This disables kernel telemetry for EDR products that rely on ETW. The offset is found by analyzing KeInsertQueueApc function. Implementation: calculate offset dynamically by parsing ntoskrnl, find EtwThreatIntProvRegHandle, write zero to disable the provider.",
+      "complexity": "complex",
+      "detection_risk": "high",
+      "apis": [
+        "NtQuerySystemInformation",
+        "DeviceIoControl"
+      ],
+      "references": [
+        "https://github.com/Hagrid29/BYOVDKit",
+        "https://github.com/4l3x777/dse_pg_bypass"
+      ],
+      "id": "T135",
+      "created_at": "2026-03-18T11:35:37.842784",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "BYOVD - HVCI Bypass via Vulnerable Driver",
+      "type": "defense_evasion",
+      "evasion_type": "defense_evasion",
+      "description": "Exploit vulnerable drivers that bypass Hypervisor-Protected Code Integrity (HVCI). Some legitimate signed drivers expose functionality that can be weaponized even with HVCI enabled. These drivers include: gmer.sys (Blackout), certain AV drivers (BdApiUtil64.sys, K7RKScan.sys, ksapi64.sys), and virtualization-based drivers. The key is finding drivers that are not blocked by HVCI policy. BYOVDFinder and HolyGrail tools help identify LOLDrivers not blocked by active HVCI policy.",
+      "complexity": "complex",
+      "detection_risk": "medium",
+      "apis": [
+        "DeviceIoControl",
+        "CreateFileA",
+        "OpenSCManagerA"
+      ],
+      "references": [
+        "https://github.com/ghostbyt3/BYOVDFinder",
+        "https://github.com/BlackSnufkin/HolyGrail",
+        "https://github.com/ZeroMemoryEx/Blackout"
+      ],
+      "id": "T136",
+      "created_at": "2026-03-18T11:35:57.159752",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "BYOVD - Kernel Callback Removal",
+      "type": "defense_evasion",
+      "evasion_type": "defense_evasion",
+      "description": "Remove kernel security callbacks (ObRegisterCallbacks, PsSetCreateProcessNotifyRoutine, etc.) using vulnerable drivers. EDR products register kernel callbacks to monitor process creation, thread creation, image loading, and object access. BYOVD can disable these callbacks by: 1) Finding callback array in kernel memory, 2) Overwriting callback function pointers, 3) Or modifying PspCreateProcessNotifyRoutine/PspCreateThreadNotifyRoutine arrays. RTCore_read_write_primitive project demonstrates removing kernel callbacks to blind EDR.",
+      "complexity": "complex",
+      "detection_risk": "high",
+      "apis": [
+        "NtQuerySystemInformation",
+        "DeviceIoControl"
+      ],
+      "references": [
+        "https://github.com/0xJs/BYOVD_read_write_primitive"
+      ],
+      "id": "T137",
+      "created_at": "2026-03-18T11:35:57.464010",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "BYOVD - Network Connection Blocking",
+      "type": "defense_evasion",
+      "evasion_type": "defense_evasion",
+      "description": "Use vulnerable drivers with WFP (Windows Filtering Platform) capabilities to block EDR/XDR network connections. Some drivers like 360WFP.sys expose WFP functionality that can be abused to create callout filters blocking outbound connections from specific processes. This prevents EDR agents from communicating with their cloud backend for telemetry upload and command/response. Attackers can selectively block security product network traffic while maintaining connectivity for malicious operations.",
+      "complexity": "medium",
+      "detection_risk": "medium",
+      "apis": [
+        "DeviceIoControl",
+        "CreateFileA"
+      ],
+      "references": [
+        "https://github.com/kyxiaxiang/360WFP_Exploit"
+      ],
+      "id": "T138",
+      "created_at": "2026-03-18T11:36:21.892218",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "BYOVD - File System Access Bypass",
+      "type": "defense_evasion",
+      "evasion_type": "defense_evasion",
+      "description": "Use vulnerable drivers to access protected files bypassing NTFS permissions and file locks. BYOVDKit demonstrates copying protected files like SAM registry hive and NTDS.dit (Active Directory database) using kernel-level file operations. The driver operates at kernel level where DACL checks can be bypassed. Technique involves: 1) Opening file handle via kernel driver, 2) Reading file contents via IOCTL, 3) Writing to attacker-controlled location. Useful for credential harvesting from protected system files.",
+      "complexity": "medium",
+      "detection_risk": "medium",
+      "apis": [
+        "DeviceIoControl",
+        "CreateFileA",
+        "NtQueryDirectoryFile"
+      ],
+      "references": [
+        "https://github.com/Hagrid29/BYOVDKit"
+      ],
+      "id": "T139",
+      "created_at": "2026-03-18T11:36:22.188462",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Vulnerable Driver - RTCore64.sys",
+      "type": "privilege_evasion",
+      "evasion_type": "privilege_evasion",
+      "description": "MSI Afterburner's RTCore64.sys driver is one of the most abused vulnerable drivers for BYOVD attacks. Exposes IOCTLs for arbitrary physical memory read (0x80002048) and write (0x8000204C). Can be used for: kernel memory manipulation, DSE bypass, process token theft, and disabling security features. Legitimately signed by MSI but weaponized by attackers. Listed in LOLDrivers and Microsoft's driver block list.",
+      "complexity": "medium",
+      "detection_risk": "medium",
+      "apis": [
+        "DeviceIoControl",
+        "CreateFileA"
+      ],
+      "references": [
+        "https://github.com/0xJs/BYOVD_read_write_primitive",
+        "https://github.com/Hagrid29/BYOVDKit"
+      ],
+      "id": "T140",
+      "created_at": "2026-03-18T11:36:31.857323",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Vulnerable Driver - Process Hacker (kprocesshacker.sys)",
+      "type": "privilege_evasion",
+      "evasion_type": "privilege_evasion",
+      "description": "Process Hacker driver (kprocesshacker.sys) provides extensive kernel manipulation capabilities including process termination, memory operations, and handle manipulation. Exposes numerous IOCTLs documented in Process Hacker source code. Requires SeDebugPrivilege but can terminate PPL processes. Used in Overlord project for process termination. The driver is legitimately signed but its powerful IOCTLs can be abused. IOCTL codes documented in kphapi.h header.",
+      "complexity": "medium",
+      "detection_risk": "medium",
+      "apis": [
+        "DeviceIoControl",
+        "CreateFileA",
+        "ZwOpenProcess"
+      ],
+      "references": [
+        "https://github.com/ZeroMemoryEx/Overlord",
+        "https://processhacker.sourceforge.io/doc/kphapi_8h.html"
+      ],
+      "id": "T141",
+      "created_at": "2026-03-18T11:36:51.557829",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Driver Reverse Engineering for BYOVD",
+      "type": "defense_evasion",
+      "evasion_type": "defense_evasion",
+      "description": "Methodology for discovering vulnerable drivers suitable for BYOVD attacks: 1) Check driver imports for ZwOpenProcess AND ZwTerminateProcess (potential process killer), 2) Locate DriverEntry and trace IRP_MJ_DEVICE_CONTROL handler, 3) Identify IOCTL codes and input buffer structures, 4) Analyze security checks (or lack thereof), 5) Map complete attack chain from user IOCTL to dangerous kernel operations. Tools like HolyGrail help prioritize drivers worth manual analysis. BlackSnufkin's BYOVD repository documents complete reverse engineering methodology.",
+      "complexity": "complex",
+      "detection_risk": "low",
+      "apis": [
+        "IDA Pro",
+        "WinDbg",
+        "OSRLoader"
+      ],
+      "references": [
+        "https://github.com/BlackSnufkin/BYOVD",
+        "https://github.com/BlackSnufkin/HolyGrail"
+      ],
+      "id": "T142",
+      "created_at": "2026-03-18T11:37:07.676026",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "BYOVD - PatchGuard Bypass",
+      "type": "defense_evasion",
+      "evasion_type": "defense_evasion",
+      "description": "Bypass Kernel Patch Protection (PatchGuard) using vulnerable drivers. PatchGuard detects kernel modifications but has a delay before triggering BSOD. Techniques include: 1) Finding PatchGuard context in nt!KiFilterFiberContext, 2) Modifying callback pointers that PatchGuard monitors, 3) Exploiting the initialization delay. The dse_pg_bypass project demonstrates disabling both DSE and PatchGuard by writing specific values to kernel memory. Note: This is highly unstable and system-specific.",
+      "complexity": "very_complex",
+      "detection_risk": "high",
+      "apis": [
+        "NtQuerySystemInformation",
+        "DeviceIoControl"
+      ],
+      "references": [
+        "https://github.com/4l3x777/dse_pg_bypass"
+      ],
+      "id": "T143",
+      "created_at": "2026-03-18T11:37:14.431972",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "LOLDrivers Database Utilization",
+      "type": "defense_evasion",
+      "evasion_type": "defense_evasion",
+      "description": "LOLDrivers (Living Off The Land Drivers) is a database of known vulnerable and malicious drivers. BYOVD attackers use this resource to find legitimately signed drivers with exploitable IOCTLs. The database includes: driver hashes, signatures, IOCTL codes, capabilities (read/write/terminate), and Microsoft block status. Tools like BYOVDFinder identify which LOLDrivers are not blocked by HVCI policy. HolyGrail helps prioritize drivers for analysis. Reference: https://www.loldrivers.io",
+      "complexity": "simple",
+      "detection_risk": "low",
+      "apis": [
+        "N/A"
+      ],
+      "references": [
+        "https://github.com/magicsword-io/LOLDrivers",
+        "https://github.com/ghostbyt3/BYOVDFinder",
+        "https://github.com/BlackSnufkin/HolyGrail"
+      ],
+      "id": "T144",
+      "created_at": "2026-03-18T11:37:20.738749",
       "category": "evasion",
       "source": "manual"
     }

@@ -307,6 +307,48 @@ class KnowledgeManager:
 
         return intersection / union if union > 0 else 0.0
 
+    def _check_duplicate_evasion(self, technique: dict) -> dict:
+        """
+        Check if technique is a duplicate or needs review.
+
+        Returns dict with:
+            - is_duplicate: bool
+            - is_similar: bool
+            - action: str (add, review, skip)
+            - reason: str
+            - existing_id: str (if duplicate/similar)
+        """
+        similar = self.find_similar_techniques(technique)
+
+        for item in similar:
+            if item.get("match_type") == "exact_name" and item.get("similarity_score", 0) >= 100:
+                return {
+                    "is_duplicate": True,
+                    "is_similar": True,
+                    "action": "skip",
+                    "reason": f"Exact name match with existing technique",
+                    "existing_id": item["technique"]["id"]
+                }
+
+        # Check for high similarity (likely duplicate)
+        for item in similar:
+            if item.get("similarity_score", 0) >= 70:
+                return {
+                    "is_duplicate": False,
+                    "is_similar": True,
+                    "action": "review",
+                    "reason": f"Similar to existing technique (score: {item['similarity_score']})",
+                    "existing_id": item["technique"]["id"]
+                }
+
+        return {
+            "is_duplicate": False,
+            "is_similar": False,
+            "action": "add",
+            "reason": "No duplicates found",
+            "existing_id": None
+        }
+
     def check_duplicate(self, name: str = None, technique_id: str = None) -> dict:
         """Check if a technique is duplicate (by name or ID)"""
         data = self._load_json("evasion")
@@ -847,16 +889,16 @@ def main():
         result = km.add_evasion_technique(technique, check_dup=not args.force)
 
         if result["success"]:
-            print(f"✅ Added evasion technique: {result['id']}")
+            print(f"[+] Added evasion technique: {result['id']}")
         else:
             action = result.get("action", "unknown")
             if action == "skipped":
-                print(f"⏭️ Skipped (duplicate): {result['reason']}")
+                print(f"[SKIP] Skipped (duplicate): {result['reason']}")
             elif action == "needs_review":
-                print(f"⚠️ Needs review: {result['reason']}")
+                print(f"[REVIEW] Needs review: {result['reason']}")
                 print(f"   Existing: {result.get('existing_id')}")
             else:
-                print(f"❌ Failed: {result.get('reason', 'Unknown error')}")
+                print(f"[ERROR] Failed: {result.get('reason', 'Unknown error')}")
 
     elif args.command == "check-duplicate":
         result = km.check_duplicate(name=args.name, technique_id=args.id)
