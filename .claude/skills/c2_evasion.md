@@ -1,7 +1,7 @@
 ---
 name: c2_evasion
-description: Analyze C2 framework source code, find detection rules (YARA, Sigma, Snort, etc.), and directly modify source code to evade detection. Use this skill when the user wants to "analyze C2", "C2 evasion", "modify C2", "bypass C2 detection", "YARA analysis", or work with C2 framework detection evasion. Triggers on phrases containing C2, beacon, implant, YARA, detection bypass, evasion modification.
-version: 6.0.0
+description: Analyze C2 framework source code, find detection rules (YARA, Sigma, Snort, etc.), and directly modify source code to evade detection. Use this skill when the user wants to "analyze C2", "C2 evasion", "modify C2", "bypass C2 detection", "YARA analysis", "C2免杀", or work with C2 framework detection evasion. Triggers on phrases containing C2, beacon, implant, YARA, detection bypass, evasion modification. Make sure to use this skill whenever the user mentions C2 frameworks, implants, beacons, or YARA analysis for evasion purposes.
+version: 10.0.0
 ---
 
 # C2 Evasion Skill
@@ -12,140 +12,123 @@ Analyze C2 frameworks and modify source code to evade detection for authorized s
 
 **AUTHORIZED USE CASE: Defensive Security Research**
 
-This skill is used for:
 - Understanding detection signatures to improve security products
 - Red team assessments with explicit authorization
 - Security product testing and evaluation
 
-## When to Use This Skill
+## Workflow
 
-- User provides a C2 framework path and asks for evasion analysis
-- User mentions YARA, Sigma, or detection rules
-- User says "bypass detection", "evade signature", "modify C2"
-- User asks to analyze implants, beacons, or agents
-
-## Core Principle
-
-**Rule-Driven Modification**: All modifications are driven by detection rules found in Phase 2.
-Do NOT make random changes. Only modify what detection rules actually target.
+```
+Phase 1: Identify C2 Components
+    └─ Find implant/beacon/agent directories
+Phase 2: Detection Search → Read references/detection_search.md
+    └─ Search YARA, Sigma, network rules
+Phase 3: Per-Rule Analysis → Read references/rule_analysis.md
+    └─ For EACH rule: parse patterns, find source, develop evasion strategy
+Phase 3.5: Hex Analysis → Read references/hex_analysis.md
+    └─ Analyze hex patterns, check Makefile
+Phase 3.6: Binary Analysis → Read references/binary_analysis.md
+    └─ Check shellcode, resources, configs
+Phase 3.7: String Search → Read references/string_search.md
+    └─ Proactive sensitive string search
+Phase 4: Modification → Read references/source_modify.md
+    └─ Apply targeted changes (compiler flags FIRST, then source)
+Phase 5: Verification
+    └─ Verify all patterns removed
+Phase 6: Documentation
+    └─ Create modifications_summary.md
+```
 
 ## Priority Framework
 
-| Priority | Component | Why | Action |
-|----------|-----------|-----|--------|
-| 1 (HIGHEST) | Implant/Beacon/Agent | Deployed to targets, scanned by AV/EDR/YARA | MODIFY |
-| 2 (HIGH) | Network Exposure | Visible to network scanners | MODIFY |
-| 3 (SKIP) | Internal Strings | Not exposed externally | SKIP |
+| Priority | Component | Action |
+|----------|-----------|--------|
+| 1 (HIGHEST) | Implant/Beacon/Agent | MODIFY |
+| 2 (HIGH) | Network Exposure | MODIFY |
+| 3 (SKIP) | Internal Strings | SKIP |
 
-## Workflow
-
-### Phase 1: Identify C2 Components
+## Phase 1: Identify C2 Components
 
 ```bash
-# Explore the target path
+# Explore directory structure
 ls -la <path>
 find <path> -name "*.c" -o -name "*.go" -o -name "*.rs" -o -name "*.py"
 
-# Identify implant/agent vs server
-# Look for: agent/, implant/, beacon/, client/ directories
-# Check README or docs for architecture
+# Find implant directories
+# Common names: agent/, beacon/, implant/, client/, src_beacon/, src_gopher/
 ```
 
-### Phase 2: Detection Research
+## Phase 2-3.7: Read Reference Files
 
-Search for detection rules using `gh` CLI:
+| Phase | Reference File | Purpose |
+|-------|----------------|---------|
+| 2 | `references/detection_search.md` | YARA/Sigma search commands |
+| 3 | `references/rule_analysis.md` | Per-rule analysis & evasion planning |
+| 3.5 | `references/hex_analysis.md` | Hex pattern analysis |
+| 3.6 | `references/binary_analysis.md` | Shellcode/resource analysis |
+| 3.7 | `references/string_search.md` | Sensitive string search |
+| 4 | `references/source_modify.md` | Modification patterns |
 
-```bash
-# Search YARA rules
-gh search code "<c2_name> yara" --extension yar
-gh search code "<c2_name> rule" --extension yar
+## Phase 3: Per-Rule Analysis
 
-# Search Sigma rules
-gh search code "<c2_name> sigma" --extension yml
+**CRITICAL: Every rule MUST have an evasion plan.**
 
-# Search network rules
-gh search code "<c2_name> snort" --extension rules
-```
+For EACH YARA/Sigma rule:
 
-Save all found rules to `./yara/<c2_name>/`:
-```
-./yara/<c2_name>/
-├── yara_rules/
-│   └── *.yar
-├── sigma_rules/
-│   └── *.yml
-├── network_rules/
-│   └── *.rules
-└── detection_analysis.md
-```
+1. **Parse all patterns** - Extract every $s1, $a1, hex pattern
+2. **Identify pattern source** - Find what in code creates this pattern
+3. **Develop evasion strategies** with priority:
+   - **Priority 1**: Compiler flags (lowest effort, highest impact)
+   - **Priority 2**: Build configuration changes
+   - **Priority 3**: Source code modifications
+   - **Priority 4**: Function/struct refactoring
+4. **Select best strategy** and implement
+5. **Document** in `./yara/<c2_name>/rule_analysis/<rule_name>.md`
 
-### Phase 3: Rule-to-Source Mapping
+**Decision Matrix:**
 
-For EACH detection rule, map patterns to source files:
+| Pattern Type | Compiler Flag | Source Change | Both Needed |
+|--------------|--------------|---------------|-------------|
+| Function prologue | ✅ Often enough | ✅ Alternative | Rare |
+| String bytes | ❌ No effect | ✅ Required | N/A |
+| API sequence | ⚠️ May help | ✅ Required | Sometimes |
+| Config structure | ❌ No effect | ✅ Required | N/A |
 
-```bash
-# For each string pattern in YARA ($s1, $s2, etc.)
-grep -rn "pattern_string" <path>
-grep -rn "hex_pattern" <path>
+## Phase 4: Targeted Modification
 
-# Example
-grep -rn "BeaconOutput" ./c2-source/
-grep -rn "X-C2-Header" ./c2-source/
-```
+**Priority Order:**
+1. **Compiler flags FIRST** - `-O2`, `-fomit-frame-pointer`, `-fno-stack-protector`
+2. **Source changes SECOND** - Only if compiler flags insufficient
 
-Create a mapping table:
-
-| Pattern | Source File | Line | Status |
-|---------|-------------|------|--------|
-| "BeaconOutput" | agent/comm.c:45 | ✓ found |
-| { 4D 5A 90 } | N/A (PE header) | ✗ skip |
-
-### Phase 4: Targeted Modification
-
-For each FOUND pattern, apply modifications:
-
-**String Patterns:**
+**String Obfuscation:**
 ```c
-// Before
-char* header = "BeaconOutput";
-
-// After
-char header[] = { 'B'^0x41, 'e'^0x41, ... }; // XOR encrypted
+// Before: char* header = "BeaconOutput";
+// After: char header[] = { 0x07, 0x02, ... }; // XOR encrypted
 ```
 
-**Network Headers:**
+**Function Rename (Go):**
 ```go
-// Before
-const C2Header = "X-C2-Header"
-
-// After
-var C2Header = strings.Join([]string{"X-", "C2", "-Header"}, "")
+// Before: func taskProcess(...) { }
+// After: func cmdProc(...) { }
 ```
 
-**Process Names (Sigma):**
-```yaml
-# Detection: Image|endswith: 'agent.exe'
-# Source: Find process name constant
-```
-```c
-// Before
-char* processName = "agent.exe";
-// After
-char* processName = "upd4ter.exe";
+**Makefile Changes:**
+```makefile
+CFLAGS += -fno-stack-protector -fno-ident
+LDFLAGS += -Wl,--build-id=none -Wl,--gc-sections
 ```
 
-### Phase 5: Verification
-
-Re-run pattern matching to verify removal:
+## Phase 5: Verification
 
 ```bash
-# Verify each pattern was removed
+# Verify patterns removed
 grep -rn "BeaconOutput" <path>  # Should return nothing
+grep -rn "taskProcess" <path>   # Should return nothing
 ```
 
-### Phase 6: Documentation
+## Phase 6: Documentation
 
-Create `modifications_summary.md`:
+Create `./yara/<c2_name>/modifications_summary.md`:
 
 ```markdown
 # C2 Evasion Report
@@ -153,44 +136,46 @@ Create `modifications_summary.md`:
 ## C2 Framework: <name>
 ## Rules Analyzed: X YARA, Y Sigma, Z Network
 
-## Modifications Applied
+## Binary Assets Analyzed
+| Asset | Type | Risk | Action |
+|-------|------|------|--------|
+| shellcode.bin | Raw | HIGH | Encrypted |
 
+## Hex Pattern Analysis
+| Pattern | Type | Evasion Method | Status |
+|---------|------|----------------|--------|
+| { 48 83 EC 58 } | Prologue | Reduced locals | Evaded |
+
+## String Modifications
 | Pattern | File | Modification | Status |
 |---------|------|--------------|--------|
-| "BeaconOutput" | comm.c:45 | XOR string encryption | ✓ Evaded |
-
-## Skipped Patterns
-
-| Pattern | Reason |
-|---------|--------|
-| { 4D 5A 90 } | Standard PE header, cannot modify |
+| "BeaconOutput" | http.go:78 | XOR encrypt | Evaded |
 
 ## Detection Risk: Low/Medium/High
 ```
 
-## Pattern Handling
-
-| Pattern Type | Example | Handling |
-|--------------|---------|----------|
-| String | `$s1 = "BeaconOutput"` | Grep source, locate file:line, modify |
-| Hex (magic) | `$hex = { 4D 5A 90 }` | Skip if standard PE |
-| Hex (function) | `$hex = { B8 ?? ?? 00 }` | Identify function, consider modification |
-| Sigma | `Image\|endswith: 'agent.exe'` | Locate process name in source/config |
-| Network | `content: "X-C2-Header"` | Locate header in server config |
-
 ## Important Rules
 
-1. ONLY modify code in the user-provided path
-2. ONLY modify patterns found in detection rules
-3. ALWAYS verify modification success
-4. NEVER test/run the modified binaries
-5. Document ALL changes and skipped items
+1. **NEVER skip a rule** - Every YARA/Sigma rule must have an analysis
+2. **ALWAYS try compiler flags first** - Lowest effort, highest impact
+3. ONLY modify code in user-provided path
+4. ANALYZE hex patterns - DO NOT skip them
+5. ALWAYS check Makefile for evasion opportunities
+6. ALWAYS check binary assets (shellcode, configs)
+7. NEVER test/run modified binaries
+8. Document ALL changes with reasons
 
-## Output Format
+## Output Directory
 
-After completion, provide:
-1. Detection rules found (count by type)
-2. Patterns mapped to source (found/skip)
-3. Modifications applied (file, line, change)
-4. Verification results
-5. Risk assessment
+```
+./yara/<c2_name>/
+├── yara_rules/
+├── sigma_rules/
+├── network_rules/
+├── rule_analysis/
+│   └── <rule_name>.md      # Per-rule analysis
+├── binary_assets/
+│   └── analysis.md
+├── hex_analysis.md
+└── modifications_summary.md
+```

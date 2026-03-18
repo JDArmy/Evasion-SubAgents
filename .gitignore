@@ -17,3 +17,4 @@ __pycache__/
 # Temp repos from research
 temp_repos/
 knowledge-base/scenarios.json
+/yara
