@@ -1,6 +1,6 @@
 {
   "version": "1.1",
-  "last_updated": "2026-03-06T12:54:03.855292",
+  "last_updated": "2026-03-20T11:44:52.478742",
   "techniques": [],
   "component_library": {
     "storage_methods": [
@@ -142,6 +142,15 @@
           "SizeofResource"
         ],
         "id": "sto_014"
+      },
+      {
+        "name": "Huffman Encoded",
+        "description": "使用Huffman编码压缩存储shellcode，减小体积并增加混淆",
+        "complexity": "complex",
+        "references": [
+          "https://github.com/0xHossam/HuffLoader"
+        ],
+        "id": "sto_015"
       }
     ],
     "memory_allocators": [
@@ -223,6 +232,92 @@
           "NtUnmapViewOfSection"
         ],
         "id": "mem_007"
+      },
+      {
+        "name": "VirtualAlloc",
+        "description": "Standard Windows API for allocating executable memory. Allocates RWX memory pages for shellcode storage.",
+        "complexity": "simple",
+        "apis": [
+          "VirtualAlloc",
+          "VirtualProtect"
+        ],
+        "references": [
+          "https://github.com/b1nhack/rust-shellcode"
+        ],
+        "id": "mem_008"
+      },
+      {
+        "name": "NtAllocateVirtualMemory",
+        "description": "Native NT API for memory allocation. Direct syscall bypasses userland hooks.",
+        "complexity": "medium",
+        "apis": [
+          "NtAllocateVirtualMemory",
+          "NtProtectVirtualMemory"
+        ],
+        "references": [
+          "https://github.com/f1zm0/hades"
+        ],
+        "id": "mem_009"
+      },
+      {
+        "name": "HeapAlloc",
+        "description": "Heap-based memory allocation using process heap. Alternative to VirtualAlloc for shellcode storage.",
+        "complexity": "simple",
+        "apis": [
+          "HeapAlloc",
+          "GetProcessHeap"
+        ],
+        "id": "mem_010"
+      },
+      {
+        "name": "LargePageAllocation",
+        "description": "Allocate memory using large pages (2MB+). Can bypass some memory scanners due to different page attributes.",
+        "complexity": "high",
+        "apis": [
+          "AllocateLargePages",
+          "VirtualAlloc",
+          "LargePageMinimum"
+        ],
+        "references": [
+          "https://github.com/cpu0x00/Ghost"
+        ],
+        "id": "mem_011"
+      },
+      {
+        "name": "DripLoader Delayed Allocation",
+        "description": "延迟内存分配和提交，逐页注入shellcode，模拟正常内存行为以绕过事件检测",
+        "complexity": "complex",
+        "apis": [
+          "NtAllocateVirtualMemory"
+        ],
+        "references": [
+          "https://github.com/xuanxuan0/DripLoader"
+        ],
+        "id": "mem_012"
+      },
+      {
+        "name": "Indirect Syscall Allocator",
+        "description": "使用间接系统调用分配内存，避免用户态Hook",
+        "complexity": "complex",
+        "apis": [
+          "NtAllocateVirtualMemory"
+        ],
+        "references": [
+          "https://github.com/f1zm0/hades"
+        ],
+        "id": "mem_013"
+      },
+      {
+        "name": "Mockingjay Allocator",
+        "description": "利用具有RWX权限的系统DLL进行分配，无需调用VirtualAlloc",
+        "complexity": "complex",
+        "apis": [
+          "None"
+        ],
+        "references": [
+          "https://github.com/caueb/Mockingjay"
+        ],
+        "id": "mem_014"
       }
     ],
     "data_copiers": [
@@ -268,6 +363,51 @@
           "RtlCopyMemory"
         ],
         "id": "dat_005"
+      },
+      {
+        "name": "RtlCopyMemory",
+        "description": "Native NT API for memory copy operations. Equivalent to memcpy but uses NT API.",
+        "complexity": "simple",
+        "apis": [
+          "RtlCopyMemory"
+        ],
+        "references": [
+          "https://github.com/D3Ext/Hooka"
+        ],
+        "id": "dat_006"
+      },
+      {
+        "name": "NtWriteVirtualMemory",
+        "description": "Native NT API for writing to memory. Can write to local or remote process memory.",
+        "complexity": "medium",
+        "apis": [
+          "NtWriteVirtualMemory"
+        ],
+        "references": [
+          "https://github.com/f1zm0/hades"
+        ],
+        "id": "dat_007"
+      },
+      {
+        "name": "WriteProcessMemory",
+        "description": "Standard Windows API for writing to process memory.",
+        "complexity": "simple",
+        "apis": [
+          "WriteProcessMemory"
+        ],
+        "id": "dat_008"
+      },
+      {
+        "name": "Indirect Syscall Copier",
+        "description": "使用间接系统调用写入内存，避免用户态Hook",
+        "complexity": "complex",
+        "apis": [
+          "NtWriteVirtualMemory"
+        ],
+        "references": [
+          "https://github.com/f1zm0/hades"
+        ],
+        "id": "dat_009"
       }
     ],
     "executors": [
@@ -568,6 +708,251 @@
           "InitOnceExecuteOnce"
         ],
         "id": "exe_028"
+      },
+      {
+        "name": "CreateThread",
+        "description": "Standard Windows API to create a new thread for shellcode execution. Basic execution method.",
+        "complexity": "simple",
+        "apis": [
+          "CreateThread",
+          "WaitForSingleObject"
+        ],
+        "references": [
+          "https://github.com/b1nhack/rust-shellcode"
+        ],
+        "id": "exe_029"
+      },
+      {
+        "name": "CreateRemoteThread",
+        "description": "Create thread in remote process for process injection. Classic cross-process execution technique.",
+        "complexity": "medium",
+        "apis": [
+          "CreateRemoteThread",
+          "OpenProcess"
+        ],
+        "references": [
+          "https://github.com/b1nhack/rust-shellcode"
+        ],
+        "id": "exe_030"
+      },
+      {
+        "name": "EarlyBird_APC",
+        "description": "Queue APC to suspended process thread. Inject into process before it starts. Also known as process hollowing variant.",
+        "complexity": "medium",
+        "apis": [
+          "CreateProcessA",
+          "QueueUserAPC",
+          "ResumeThread",
+          "VirtualAllocEx",
+          "WriteProcessMemory"
+        ],
+        "references": [
+          "https://github.com/b1nhack/rust-shellcode"
+        ],
+        "id": "exe_031"
+      },
+      {
+        "name": "Fibers",
+        "description": "Convert thread to fiber and execute shellcode via fiber switching. Alternative execution path avoiding CreateThread.",
+        "complexity": "medium",
+        "apis": [
+          "ConvertThreadToFiber",
+          "CreateFiber",
+          "SwitchToFiber"
+        ],
+        "references": [
+          "https://github.com/b1nhack/rust-shellcode",
+          "https://github.com/D3Ext/Hooka"
+        ],
+        "id": "exe_032"
+      },
+      {
+        "name": "NtQueueApcThreadEx_Local",
+        "description": "Local APC queue execution using NtQueueApcThreadEx syscall. Execute in current process without CreateThread.",
+        "complexity": "medium",
+        "apis": [
+          "NtQueueApcThreadEx",
+          "GetCurrentThread"
+        ],
+        "references": [
+          "https://github.com/b1nhack/rust-shellcode"
+        ],
+        "id": "exe_033"
+      },
+      {
+        "name": "EtwpCreateEtwThread",
+        "description": "Undocumented NT API for creating ETW threads. Alternative thread creation method.",
+        "complexity": "high",
+        "apis": [
+          "EtwpCreateEtwThread"
+        ],
+        "references": [
+          "https://github.com/b1nhack/rust-shellcode",
+          "https://github.com/matro7sh/myph"
+        ],
+        "id": "exe_034"
+      },
+      {
+        "name": "NtCreateThreadEx",
+        "description": "Native NT API for thread creation. Direct syscall for thread creation bypassing userland hooks.",
+        "complexity": "medium",
+        "apis": [
+          "NtCreateThreadEx"
+        ],
+        "references": [
+          "https://github.com/f1zm0/hades"
+        ],
+        "id": "exe_035"
+      },
+      {
+        "name": "EnumSystemLocales_Callback",
+        "description": "Callback-based execution using EnumSystemLocalesEx. Shellcode executed as callback function.",
+        "complexity": "medium",
+        "apis": [
+          "EnumSystemLocalesEx"
+        ],
+        "references": [
+          "https://github.com/D3Ext/Hooka"
+        ],
+        "id": "exe_036"
+      },
+      {
+        "name": "SetTimer_Callback",
+        "description": "Callback-based execution using Windows Timer. Shellcode executed via timer callback.",
+        "complexity": "medium",
+        "apis": [
+          "SetTimer",
+          "GetMessageW",
+          "DispatchMessageW"
+        ],
+        "references": [
+          "https://github.com/matro7sh/myph"
+        ],
+        "id": "exe_037"
+      },
+      {
+        "name": "ModuleStomping",
+        "description": "Overwrite entry point of legitimate DLL in remote process. Execute shellcode from existing module context.",
+        "complexity": "high",
+        "apis": [
+          "EnumProcessModules",
+          "GetModuleBaseNameA",
+          "ReadProcessMemory",
+          "WriteProcessMemory"
+        ],
+        "references": [
+          "https://github.com/b1nhack/rust-shellcode"
+        ],
+        "id": "exe_038"
+      },
+      {
+        "name": "RtlCreateUserThread",
+        "description": "Native NT API wrapper for creating user mode threads. Alternative to CreateRemoteThread.",
+        "complexity": "medium",
+        "apis": [
+          "RtlCreateUserThread"
+        ],
+        "id": "exe_039"
+      },
+      {
+        "name": "EnumChildWindows Callback",
+        "description": "通过EnumChildWindows回调函数执行shellcode，避免CreateThread调用",
+        "complexity": "medium",
+        "apis": [
+          "EnumChildWindows"
+        ],
+        "references": [
+          "https://github.com/ChaitanyaHaritash/Callback_Shellcode_Injection"
+        ],
+        "id": "exe_040"
+      },
+      {
+        "name": "EnumDateFormats Callback",
+        "description": "通过EnumDateFormats回调函数执行shellcode",
+        "complexity": "medium",
+        "apis": [
+          "EnumDateFormatsA",
+          "EnumDateFormatsW"
+        ],
+        "references": [
+          "https://github.com/ChaitanyaHaritash/Callback_Shellcode_Injection"
+        ],
+        "id": "exe_041"
+      },
+      {
+        "name": "EnumDesktopWindows Callback",
+        "description": "通过EnumDesktopWindows回调函数执行shellcode",
+        "complexity": "medium",
+        "apis": [
+          "EnumDesktopWindows"
+        ],
+        "references": [
+          "https://github.com/ChaitanyaHaritash/Callback_Shellcode_Injection"
+        ],
+        "id": "exe_042"
+      },
+      {
+        "name": "EnumSystemLocales Callback",
+        "description": "通过EnumSystemLocales回调函数执行shellcode",
+        "complexity": "medium",
+        "apis": [
+          "EnumSystemLocalesA",
+          "EnumSystemLocalesW"
+        ],
+        "references": [
+          "https://github.com/ChaitanyaHaritash/Callback_Shellcode_Injection"
+        ],
+        "id": "exe_043"
+      },
+      {
+        "name": "Indirect Syscall Executor",
+        "description": "通过间接系统调用创建线程执行shellcode，跳转到NTDLL中的syscall指令",
+        "complexity": "complex",
+        "apis": [
+          "NtCreateThreadEx"
+        ],
+        "references": [
+          "https://github.com/VirtualAlllocEx/Direct-Syscalls-vs-Indirect-Syscalls"
+        ],
+        "id": "exe_044"
+      },
+      {
+        "name": "Fiber Executor",
+        "description": "通过Windows Fiber机制执行shellcode，创建协程上下文",
+        "complexity": "medium",
+        "apis": [
+          "ConvertThreadToFiber",
+          "CreateFiber",
+          "SwitchToFiber"
+        ],
+        "id": "exe_045"
+      },
+      {
+        "name": "Module Stomping Executor",
+        "description": "覆盖合法DLL模块的.text段来执行shellcode，无需创建新线程",
+        "complexity": "complex",
+        "apis": [
+          "LoadLibrary",
+          "VirtualProtect"
+        ],
+        "references": [
+          "https://github.com/WithSecureLabs/ModuleStomping",
+          "https://github.com/BlackSnufkin/NovaLdr"
+        ],
+        "id": "exe_046"
+      },
+      {
+        "name": "VEH Exception Handler",
+        "description": "通过向量化异常处理器执行shellcode，触发异常后捕获执行",
+        "complexity": "medium",
+        "apis": [
+          "AddVectoredExceptionHandler",
+          "RaiseException"
+        ],
+        "references": [
+          "https://github.com/zack0x5/VEH-Shellcode-Execution"
+        ],
+        "id": "exe_047"
       }
     ]
   }

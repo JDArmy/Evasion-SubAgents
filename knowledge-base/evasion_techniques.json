@@ -1,6 +1,6 @@
 {
   "version": "1.1",
-  "last_updated": "2026-03-18T11:37:20.738749",
+  "last_updated": "2026-03-20T11:44:34.644665",
   "techniques": [
     {
       "id": "T001",
@@ -2816,6 +2816,543 @@
       ],
       "id": "T144",
       "created_at": "2026-03-18T11:37:20.738749",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Direct Syscalls",
+      "type": "api_evasion",
+      "evasion_type": "api_evasion",
+      "description": "Execute NT syscalls directly via assembly stubs, bypassing userland API hooks in ntdll.dll. The syscall number (SSN) is extracted from ntdll and executed directly.",
+      "complexity": "high",
+      "detection_risk": "low",
+      "apis": [
+        "syscall instruction"
+      ],
+      "references": [
+        "https://github.com/icyguider/Shhhloader",
+        "https://github.com/f1zm0/hades",
+        "https://github.com/cpu0x00/Ghost"
+      ],
+      "id": "T145",
+      "created_at": "2026-03-20T11:14:48.733734",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "HellsGate_HalosGate",
+      "type": "api_evasion",
+      "evasion_type": "api_evasion",
+      "description": "Technique to dynamically resolve syscall numbers (SSNs) at runtime by analyzing neighboring unhooked syscalls in ntdll. Works even when target function is hooked by EDR.",
+      "complexity": "high",
+      "detection_risk": "low",
+      "apis": [
+        "NtQueryInformationProcess",
+        "syscall"
+      ],
+      "references": [
+        "https://github.com/D3Ext/Hooka"
+      ],
+      "id": "T146",
+      "created_at": "2026-03-20T11:15:15.291267",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "API_Hashing",
+      "type": "api_evasion",
+      "evasion_type": "api_evasion",
+      "description": "Resolve API functions by hash values instead of plaintext names. Avoids storing suspicious API strings in binary. Hash function used to look up exports at runtime.",
+      "complexity": "medium",
+      "detection_risk": "medium",
+      "apis": [
+        "GetModuleHandle",
+        "GetProcAddress"
+      ],
+      "references": [
+        "https://github.com/D3Ext/Hooka"
+      ],
+      "id": "T147",
+      "created_at": "2026-03-20T11:15:15.688724",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Classic_Unhooking",
+      "type": "hook_evasion",
+      "evasion_type": "hook_evasion",
+      "description": "Restore original ntdll.dll code by reading clean copy from disk and overwriting hooked functions in memory. Bypasses userland EDR hooks.",
+      "complexity": "medium",
+      "detection_risk": "medium",
+      "apis": [
+        "LoadLibrary",
+        "ReadFile",
+        "WriteProcessMemory"
+      ],
+      "references": [
+        "https://github.com/D3Ext/Hooka"
+      ],
+      "id": "T148",
+      "created_at": "2026-03-20T11:15:16.038015",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Peruns_Unhooking",
+      "type": "hook_evasion",
+      "evasion_type": "hook_evasion",
+      "description": "Get clean ntdll from suspended process (e.g. notepad.exe), copy .text section to current process. More stealthy than disk-based unhooking.",
+      "complexity": "high",
+      "detection_risk": "low",
+      "apis": [
+        "CreateProcessW",
+        "ReadProcessMemory",
+        "WriteProcessMemory",
+        "TerminateProcess"
+      ],
+      "references": [
+        "https://github.com/D3Ext/Hooka"
+      ],
+      "id": "T149",
+      "created_at": "2026-03-20T11:15:16.417874",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "DripLoader_Technique",
+      "type": "injection_evasion",
+      "evasion_type": "injection_evasion",
+      "description": "Allocate shellcode in small chunks over time with delays to evade memory-based detection. Uses staged memory allocation pattern and delayed execution.",
+      "complexity": "high",
+      "detection_risk": "low",
+      "apis": [
+        "NtAllocateVirtualMemory",
+        "NtWriteVirtualMemory",
+        "NtProtectVirtualMemory"
+      ],
+      "references": [
+        "https://github.com/xuanxuan0/DripLoader"
+      ],
+      "id": "T150",
+      "created_at": "2026-03-20T11:15:24.853400",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Return_Address_Spoofing",
+      "type": "call_stack_evasion",
+      "evasion_type": "call_stack_evasion",
+      "description": "Spoof return addresses on the call stack to hide the true source of API calls. Uses ROP gadget to fake call origin, making stack analysis unreliable.",
+      "complexity": "high",
+      "detection_risk": "low",
+      "apis": [
+        "VirtualProtect",
+        "call stack manipulation"
+      ],
+      "references": [
+        "https://github.com/cpu0x00/Ghost"
+      ],
+      "id": "T151",
+      "created_at": "2026-03-20T11:15:25.148648",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "ETW_Patching",
+      "type": "telemetry_evasion",
+      "evasion_type": "telemetry_evasion",
+      "description": "Patch ETW (Event Tracing for Windows) to disable event logging. Prevents security products from receiving telemetry about process behavior.",
+      "complexity": "medium",
+      "detection_risk": "medium",
+      "apis": [
+        "NtProtectVirtualMemory",
+        "EtwEventWrite"
+      ],
+      "references": [
+        "https://github.com/cpu0x00/Ghost"
+      ],
+      "id": "T152",
+      "created_at": "2026-03-20T11:15:25.439667",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "No_RWX_Memory",
+      "type": "memory_evasion",
+      "evasion_type": "memory_evasion",
+      "description": "Avoid RWX memory pages by using RX-only memory. Inject into suspended process entry point instead of allocating new executable memory.",
+      "complexity": "high",
+      "detection_risk": "low",
+      "apis": [
+        "CreateProcessW",
+        "NtQueryInformationProcess",
+        "ReadProcessMemory",
+        "WriteProcessMemory"
+      ],
+      "references": [
+        "https://github.com/D3Ext/Hooka"
+      ],
+      "id": "T153",
+      "created_at": "2026-03-20T11:15:25.734017",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Fiber_Sleep_Execution",
+      "type": "execution_evasion",
+      "evasion_type": "execution_evasion",
+      "description": "Use fiber switching to implement sleep obfuscation. Switch between payload fiber and main fiber during sleep, allowing memory encryption during idle periods.",
+      "complexity": "high",
+      "detection_risk": "low",
+      "apis": [
+        "ConvertThreadToFiber",
+        "CreateFiber",
+        "SwitchToFiber",
+        "Sleep"
+      ],
+      "references": [
+        "https://github.com/cpu0x00/Ghost"
+      ],
+      "id": "T154",
+      "created_at": "2026-03-20T11:15:40.986229",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "AES_Encrypted_Payload",
+      "type": "payload_evasion",
+      "evasion_type": "payload_evasion",
+      "description": "Encrypt shellcode with AES before embedding. Decrypt at runtime to avoid static detection signatures.",
+      "complexity": "medium",
+      "detection_risk": "low",
+      "apis": [
+        "AESDecrypt",
+        "CryptDecrypt"
+      ],
+      "references": [
+        "https://github.com/cpu0x00/Ghost"
+      ],
+      "id": "T155",
+      "created_at": "2026-03-20T11:15:41.306024",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "XOR_Encrypted_Payload",
+      "type": "payload_evasion",
+      "evasion_type": "payload_evasion",
+      "description": "Simple XOR encryption of shellcode with key. Decrypt at runtime. Simple but effective against static signatures.",
+      "complexity": "simple",
+      "detection_risk": "medium",
+      "apis": [
+        "XOR decryption"
+      ],
+      "references": [
+        "https://github.com/icyguider/Shhhloader"
+      ],
+      "id": "T156",
+      "created_at": "2026-03-20T11:15:41.635073",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Wordlist_Encoding",
+      "type": "payload_evasion",
+      "evasion_type": "payload_evasion",
+      "description": "Encode shellcode bytes as words from a wordlist. Each byte maps to a word. Decode at runtime by finding word index.",
+      "complexity": "medium",
+      "detection_risk": "low",
+      "apis": [
+        "string comparison",
+        "wordlist"
+      ],
+      "references": [
+        "https://github.com/icyguider/Shhhloader"
+      ],
+      "id": "T157",
+      "created_at": "2026-03-20T11:15:41.961356",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Callback-based Execution (EnumChildWindows)",
+      "type": "execution_evasion",
+      "evasion_type": "execution_evasion",
+      "description": "使用EnumChildWindows等Windows回调函数执行shellcode，避免直接CreateThread调用",
+      "complexity": "medium",
+      "detection_risk": "low",
+      "apis": [
+        "EnumChildWindows",
+        "VirtualAlloc"
+      ],
+      "references": [
+        "https://github.com/ChaitanyaHaritash/Callback_Shellcode_Injection"
+      ],
+      "id": "T158",
+      "created_at": "2026-03-20T11:32:58.843551",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Indirect Syscall with SSN Extraction",
+      "type": "execution_evasion",
+      "evasion_type": "execution_evasion",
+      "description": "从NTDLL函数stub中提取系统调用号(SSN)，然后跳转到NTDLL中的syscall指令地址执行，避免直接调用被Hook的API",
+      "complexity": "complex",
+      "detection_risk": "very_low",
+      "apis": [
+        "NtAllocateVirtualMemory",
+        "NtWriteVirtualMemory",
+        "NtCreateThreadEx"
+      ],
+      "references": [
+        "https://github.com/VirtualAlllocEx/Direct-Syscalls-vs-Indirect-Syscalls"
+      ],
+      "id": "T159",
+      "created_at": "2026-03-20T11:35:45.387757",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "HWBP-based Indirect Syscall (HWSyscalls)",
+      "type": "execution_evasion",
+      "evasion_type": "execution_evasion",
+      "description": "使用硬件断点(HWBP)和HalosGate技术执行间接系统调用，通过VEH处理异常，在kernel32中设置合成跳板",
+      "complexity": "complex",
+      "detection_risk": "very_low",
+      "apis": [
+        "NtAllocateVirtualMemory",
+        "NtWriteVirtualMemory",
+        "AddVectoredExceptionHandler"
+      ],
+      "references": [
+        "https://github.com/Dec0ne/HWSyscalls"
+      ],
+      "id": "T160",
+      "created_at": "2026-03-20T11:35:53.530790",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "DripLoader - Event-based Injection Evasion",
+      "type": "injection_evasion",
+      "evasion_type": "injection_evasion",
+      "description": "绕过基于事件的注入检测，通过延迟内存分配和提交，使用系统调用逐页注入shellcode，模拟正常内存行为",
+      "complexity": "complex",
+      "detection_risk": "low",
+      "apis": [
+        "NtAllocateVirtualMemory",
+        "NtWriteVirtualMemory"
+      ],
+      "references": [
+        "https://github.com/xuanxuan0/DripLoader"
+      ],
+      "id": "T161",
+      "created_at": "2026-03-20T11:35:58.555792",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Go-based NtAPI Wrapper (Hades)",
+      "type": "execution_evasion",
+      "evasion_type": "execution_evasion",
+      "description": "使用Go语言封装NT Native API，实现跨平台的syscall包装器，支持直接和间接系统调用",
+      "complexity": "complex",
+      "detection_risk": "low",
+      "apis": [
+        "NtAllocateVirtualMemory",
+        "NtWriteVirtualMemory",
+        "NtProtectVirtualMemory",
+        "NtCreateThreadEx"
+      ],
+      "references": [
+        "https://github.com/f1zm0/hades"
+      ],
+      "id": "T162",
+      "created_at": "2026-03-20T11:36:01.833834",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "ROR13 API Hashing",
+      "type": "api_evasion",
+      "evasion_type": "api_evasion",
+      "description": "使用ROR13算法计算API名称哈希，通过遍历PEB动态解析API地址，隐藏导入表",
+      "complexity": "medium",
+      "detection_risk": "low",
+      "apis": [
+        "None"
+      ],
+      "references": [
+        "https://github.com/LloydLabs/Windows-API-Hashing"
+      ],
+      "id": "T163",
+      "created_at": "2026-03-20T11:36:13.447274",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Dynamic SSN Resolution (Halo's Gate)",
+      "type": "execution_evasion",
+      "evasion_type": "execution_evasion",
+      "description": "动态解析系统调用号(SSN)，即使NTDLL被Hook，通过分析邻近未Hook的函数来获取正确的SSN",
+      "complexity": "complex",
+      "detection_risk": "very_low",
+      "apis": [
+        "NtAllocateVirtualMemory",
+        "NtWriteVirtualMemory"
+      ],
+      "references": [
+        "https://github.com/joshfaust/Alaris"
+      ],
+      "id": "T164",
+      "created_at": "2026-03-20T11:36:49.153269",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Syscall Stub Generation (SW2/SW3)",
+      "type": "execution_evasion",
+      "evasion_type": "execution_evasion",
+      "description": "使用Hell's Gate风格的syscall存根生成，通过哈希排序系统调用表，避免硬编码SSN",
+      "complexity": "complex",
+      "detection_risk": "low",
+      "apis": [
+        "NtAllocateVirtualMemory",
+        "NtWriteVirtualMemory",
+        "NtCreateThreadEx"
+      ],
+      "references": [
+        "https://github.com/icyguider/Shhhloader"
+      ],
+      "id": "T165",
+      "created_at": "2026-03-20T11:36:52.177469",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Fiber-based Shellcode Execution",
+      "type": "execution_evasion",
+      "evasion_type": "execution_evasion",
+      "description": "使用Windows Fiber机制执行shellcode，通过ConvertThreadToFiber和CreateFiber创建协程执行上下文",
+      "complexity": "medium",
+      "detection_risk": "medium",
+      "apis": [
+        "ConvertThreadToFiber",
+        "CreateFiber",
+        "SwitchToFiber"
+      ],
+      "id": "T166",
+      "created_at": "2026-03-20T11:38:49.041156",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Export Address Table (EAT) Hooking Bypass",
+      "type": "hook_evasion",
+      "evasion_type": "hook_evasion",
+      "description": "通过解析PE导出表直接获取函数地址，绕过IAT Hook和用户态Hook",
+      "complexity": "medium",
+      "detection_risk": "low",
+      "apis": [
+        "None"
+      ],
+      "id": "T167",
+      "created_at": "2026-03-20T11:38:56.779750",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Huffman Coding Shellcode Obfuscation",
+      "type": "payload_evasion",
+      "evasion_type": "payload_evasion",
+      "description": "使用Huffman编码对shellcode进行压缩和混淆，结合动态间接系统调用",
+      "complexity": "complex",
+      "detection_risk": "low",
+      "apis": [
+        "None"
+      ],
+      "references": [
+        "https://github.com/0xHossam/HuffLoader"
+      ],
+      "id": "T168",
+      "created_at": "2026-03-20T11:39:04.751675",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Threadless Module Stomping (NovaLdr)",
+      "type": "execution_evasion",
+      "evasion_type": "execution_evasion",
+      "description": "使用模块覆盖技术注入shellcode，无需创建新线程，通过修改现有模块的.text段执行代码",
+      "complexity": "complex",
+      "detection_risk": "very_low",
+      "apis": [
+        "LoadLibrary",
+        "VirtualProtect"
+      ],
+      "references": [
+        "https://github.com/BlackSnufkin/NovaLdr"
+      ],
+      "id": "T169",
+      "created_at": "2026-03-20T11:41:37.664672",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Mockingjay Self-Injection",
+      "type": "injection_evasion",
+      "evasion_type": "injection_evasion",
+      "description": "利用具有RWX权限的系统DLL(如ntdll.dll)进行自注入，避免分配新内存，直接使用现有可执行内存区域",
+      "complexity": "complex",
+      "detection_risk": "very_low",
+      "apis": [
+        "None"
+      ],
+      "references": [
+        "https://github.com/caueb/Mockingjay"
+      ],
+      "id": "T170",
+      "created_at": "2026-03-20T11:42:19.684703",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "Reflective PE Loading with Synthetic Stack",
+      "type": "execution_evasion",
+      "evasion_type": "execution_evasion",
+      "description": "反射式加载PE文件到内存，并合成调用堆栈以绕过调用栈检测",
+      "complexity": "complex",
+      "detection_risk": "low",
+      "apis": [
+        "VirtualAlloc",
+        "RtlMoveMemory"
+      ],
+      "references": [
+        "https://github.com/Cracked5pider/KaynLdr",
+        "https://github.com/NtDallas/OdinLdr"
+      ],
+      "id": "T171",
+      "created_at": "2026-03-20T11:43:55.003132",
+      "category": "evasion",
+      "source": "manual"
+    },
+    {
+      "name": "VEH-based Shellcode Execution",
+      "type": "execution_evasion",
+      "evasion_type": "execution_evasion",
+      "description": "使用向量化异常处理器(VEH)执行shellcode，通过触发异常并捕获来执行代码",
+      "complexity": "medium",
+      "detection_risk": "low",
+      "apis": [
+        "AddVectoredExceptionHandler",
+        "RaiseException"
+      ],
+      "references": [
+        "https://github.com/zack0x5/VEH-Shellcode-Execution"
+      ],
+      "id": "T172",
+      "created_at": "2026-03-20T11:44:34.644665",
       "category": "evasion",
       "source": "manual"
     }

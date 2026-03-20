@@ -18,3 +18,5 @@ __pycache__/
 temp_repos/
 knowledge-base/scenarios.json
 /yara
+.claude/settings.local.json
+knowledge-base/scenarios.json
