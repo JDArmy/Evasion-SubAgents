@@ -5,6 +5,8 @@ Claude Code -> Langfuse hook
 Supports:
 - Main session turns (Stop hook)
 - Subagent progress tracking (agent_progress events)
+
+Updated for Langfuse SDK 3.x
 """
 
 import json
@@ -19,7 +21,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 # --- Langfuse import (fail-open) ---
 try:
-    from langfuse import Langfuse, propagate_attributes
+    from langfuse import Langfuse
 except Exception:
     sys.exit(0)
 
@@ -296,7 +298,6 @@ class Turn:
 # ----------------- Subagent tracking -----------------
 @dataclass
 class SubagentSession:
-    """Track a subagent's progress messages"""
     agent_id: str
     parent_tool_use_id: str
     description: str = ""
@@ -312,40 +313,33 @@ class SubagentSession:
     status: str = "running"
 
 def is_agent_progress(msg: Dict[str, Any]) -> bool:
-    """Check if message is an agent progress event"""
     return (
         msg.get("type") == "progress" and
         msg.get("data", {}).get("type") == "agent_progress"
     )
 
 def extract_agent_progress_data(msg: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    """Extract agent progress data from a progress message"""
-    # Check if this is an agent_progress message
     data = msg.get("data", {})
     if msg.get("type") != "progress" or data.get("type") != "agent_progress":
         return None
 
-    # The actual message content is nested: data.message.message
-    # parentToolUseID and toolUseID are at the TOP LEVEL of msg, not in data
     outer_msg = data.get("message", {})
     inner_msg = outer_msg.get("message", {})
 
     return {
         "agent_id": data.get("agentId", ""),
-        "parent_tool_use_id": msg.get("parentToolUseID", ""),  # Top level!
-        "tool_use_id": msg.get("toolUseID", ""),  # Top level!
+        "parent_tool_use_id": msg.get("parentToolUseID", ""),
+        "tool_use_id": msg.get("toolUseID", ""),
         "prompt": data.get("prompt", ""),
-        "message_type": outer_msg.get("type", ""),  # "user" or "assistant"
+        "message_type": outer_msg.get("type", ""),
         "message": inner_msg,
         "timestamp": msg.get("timestamp", ""),
     }
 
 def build_subagents(messages: List[Dict[str, Any]]) -> Dict[str, SubagentSession]:
-    """Build subagent sessions from progress messages and agent results"""
     subagents: Dict[str, SubagentSession] = {}
 
     for msg in messages:
-        # First check if this is an agent result (tool_result with toolUseResult containing agentId)
         if msg.get("type") == "user":
             content = msg.get("message", {}).get("content", [])
             tool_use_result = msg.get("toolUseResult", {})
@@ -353,16 +347,13 @@ def build_subagents(messages: List[Dict[str, Any]]) -> Dict[str, SubagentSession
             if isinstance(content, list):
                 for item in content:
                     if isinstance(item, dict) and item.get("type") == "tool_result":
-                        # Check for agent result
                         if "agentId" in tool_use_result:
                             agent_id = tool_use_result.get("agentId", "")
-                            # Find matching subagent by looking for the parent tool use
                             for key, sa in subagents.items():
                                 if sa.agent_id == agent_id:
                                     sa.status = tool_use_result.get("status", "completed")
                                     sa.total_tokens = tool_use_result.get("totalTokens", 0)
                                     sa.total_tool_count = tool_use_result.get("totalToolUseCount", 0)
-                                    # Extract result text from content
                                     result_content = item.get("content", "")
                                     if isinstance(result_content, list):
                                         for rc in result_content:
@@ -373,7 +364,6 @@ def build_subagents(messages: List[Dict[str, Any]]) -> Dict[str, SubagentSession
                                         sa.result_text = result_content[:MAX_CHARS]
                                     break
 
-        # Then handle progress messages
         progress_data = extract_agent_progress_data(msg)
         if not progress_data:
             continue
@@ -381,7 +371,6 @@ def build_subagents(messages: List[Dict[str, Any]]) -> Dict[str, SubagentSession
         agent_id = progress_data["agent_id"]
         parent_tool_id = progress_data["parent_tool_use_id"]
 
-        # Create or get subagent session
         key = f"{agent_id}::{parent_tool_id}"
         if key not in subagents:
             subagents[key] = SubagentSession(
@@ -394,7 +383,6 @@ def build_subagents(messages: List[Dict[str, Any]]) -> Dict[str, SubagentSession
         sa = subagents[key]
         sa.messages.append(msg)
 
-        # Extract tool use/result from the inner message
         inner_msg = progress_data.get("message", {})
         msg_type = progress_data.get("message_type", "")
 
@@ -481,6 +469,7 @@ def _tool_calls_from_assistants(assistant_msgs: List[Dict[str, Any]]) -> List[Di
     return calls
 
 def emit_turn(langfuse: Langfuse, session_id: str, turn_num: int, turn: Turn, transcript_path: Path) -> None:
+    """Emit a turn to Langfuse using start_as_current_observation with session_id"""
     user_text_raw = extract_text(get_content(turn.user_msg))
     user_text, user_text_meta = truncate_text(user_text_raw)
 
@@ -502,22 +491,22 @@ def emit_turn(langfuse: Langfuse, session_id: str, turn_num: int, turn: Turn, tr
         else:
             c["output"] = None
 
-    with propagate_attributes(
-        session_id=session_id,
-        trace_name=f"Claude Code - Turn {turn_num}",
-        tags=["claude-code"],
-    ):
+    try:
+        # Use start_as_current_observation and update_current_trace for session_id
         with langfuse.start_as_current_observation(
             name=f"Claude Code - Turn {turn_num}",
             input={"role": "user", "content": user_text},
             metadata={
                 "source": "claude-code",
-                "session_id": session_id,
                 "turn_number": turn_num,
                 "transcript_path": str(transcript_path),
                 "user_text": user_text_meta,
             },
-        ) as trace_span:
+        ) as trace_obs:
+            # Set session_id via update_current_trace
+            langfuse.update_current_trace(session_id=session_id)
+
+            # Add generation
             with langfuse.start_as_current_observation(
                 name="Claude Response",
                 as_type="generation",
@@ -531,6 +520,7 @@ def emit_turn(langfuse: Langfuse, session_id: str, turn_num: int, turn: Turn, tr
             ):
                 pass
 
+            # Add tool calls
             for tc in tool_calls:
                 in_obj = tc["input"]
                 if isinstance(in_obj, str):
@@ -540,7 +530,7 @@ def emit_turn(langfuse: Langfuse, session_id: str, turn_num: int, turn: Turn, tr
 
                 with langfuse.start_as_current_observation(
                     name=f"Tool: {tc['name']}",
-                    as_type="tool",
+                    as_type="span",
                     input=in_obj,
                     metadata={
                         "tool_name": tc["name"],
@@ -551,18 +541,22 @@ def emit_turn(langfuse: Langfuse, session_id: str, turn_num: int, turn: Turn, tr
                 ) as tool_obs:
                     tool_obs.update(output=tc.get("output"))
 
-            trace_span.update(output={"role": "assistant", "content": assistant_text})
+            trace_obs.update(output={"role": "assistant", "content": assistant_text})
+
+        debug(f"emit_turn success: turn={turn_num}, tools={len(tool_calls)}, trace_id={trace_obs.trace_id}")
+
+    except Exception as e:
+        error(f"emit_turn failed: {e}")
+        raise
 
 # ----------------- Subagent emit -----------------
 def emit_subagent(langfuse: Langfuse, session_id: str, subagent: SubagentSession, transcript_path: Path) -> None:
-    """Emit a subagent session as a span with tool calls and generation"""
+    """Emit a subagent session using start_as_current_observation with session_id"""
 
     debug(f"emit_subagent: agent_id={subagent.agent_id[:8]}, tool_uses={len(subagent.tool_uses)}, tool_results={len(subagent.tool_results)}")
 
-    # Extract final content/result from last message
     result_text = ""
     if subagent.messages:
-        # Look for text content in the messages
         for msg in reversed(subagent.messages):
             msg_data = msg.get("data", {}).get("message", {})
             inner_msg = msg_data.get("message", {})
@@ -578,7 +572,6 @@ def emit_subagent(langfuse: Langfuse, session_id: str, subagent: SubagentSession
                 if result_text:
                     break
 
-    # Build tool calls list
     tool_calls = []
     for tu in subagent.tool_uses:
         tool_name = tu.get("name", "unknown")
@@ -598,22 +591,16 @@ def emit_subagent(langfuse: Langfuse, session_id: str, subagent: SubagentSession
             call["output"] = out_str
         tool_calls.append(call)
 
-    # Extract description from prompt if available
     prompt_text = subagent.prompt[:200] if subagent.prompt else ""
     description = prompt_text.split('\n')[0][:50] if prompt_text else f"Subagent {subagent.agent_id[:8]}"
 
-    with propagate_attributes(
-        session_id=session_id,
-        trace_name=f"Subagent: {description}",
-        tags=["claude-code", "subagent"],
-    ):
+    try:
+        # Use start_as_current_observation and update_current_trace for session_id
         with langfuse.start_as_current_observation(
             name=f"Subagent: {description}",
-            as_type="span",
             input={"prompt": subagent.prompt[:MAX_CHARS] if subagent.prompt else ""},
             metadata={
                 "source": "claude-code-subagent",
-                "session_id": session_id,
                 "agent_id": subagent.agent_id,
                 "parent_tool_use_id": subagent.parent_tool_use_id,
                 "status": subagent.status,
@@ -622,21 +609,12 @@ def emit_subagent(langfuse: Langfuse, session_id: str, subagent: SubagentSession
                 "tool_calls_count": len(tool_calls),
                 "transcript_path": str(transcript_path),
             },
-        ) as span:
+        ) as subagent_obs:
+            # Set session_id via update_current_trace
+            langfuse.update_current_trace(session_id=session_id)
 
-            # Emit a generation for the model call (input prompt -> output result)
-            # Use actual token usage from agent result
-            model_name = "claude-sonnet"  # Default subagent model
+            model_name = "claude-sonnet"
             result_text_to_use = subagent.result_text if subagent.result_text else result_text
-
-            # Calculate usage - use actual if available
-            if subagent.total_tokens > 0:
-                # Estimate input/output split based on typical ratios
-                input_tokens = int(subagent.total_tokens * 0.9)  # Most tokens are input context
-                output_tokens = int(subagent.total_tokens * 0.1)
-            else:
-                input_tokens = 0
-                output_tokens = 0
 
             with langfuse.start_as_current_observation(
                 name="Model Generation",
@@ -649,18 +627,10 @@ def emit_subagent(langfuse: Langfuse, session_id: str, subagent: SubagentSession
                     "total_tokens": subagent.total_tokens,
                     "total_tool_count": subagent.total_tool_count,
                     "status": subagent.status,
-                    "estimated_input_tokens": input_tokens,
-                    "estimated_output_tokens": output_tokens,
                 },
-            ) as gen:
-                # Update with usage info after creation
-                gen.update(usage={
-                    "input": input_tokens,
-                    "output": output_tokens,
-                    "total": subagent.total_tokens if subagent.total_tokens else 0,
-                })
+            ):
+                pass
 
-            # Emit each tool call as a child observation
             for tc in tool_calls:
                 in_obj = tc.get("input", {})
                 if isinstance(in_obj, str):
@@ -670,7 +640,7 @@ def emit_subagent(langfuse: Langfuse, session_id: str, subagent: SubagentSession
 
                 with langfuse.start_as_current_observation(
                     name=f"Tool: {tc['name']}",
-                    as_type="tool",
+                    as_type="span",
                     input=in_obj,
                     metadata={
                         "tool_name": tc["name"],
@@ -680,7 +650,13 @@ def emit_subagent(langfuse: Langfuse, session_id: str, subagent: SubagentSession
                 ) as tool_obs:
                     tool_obs.update(output=tc.get("output"))
 
-            span.update(output={"result": result_text[:MAX_CHARS] if result_text else "completed", "tool_count": len(tool_calls)})
+            subagent_obs.update(output={"result": result_text[:MAX_CHARS] if result_text else "completed", "tool_count": len(tool_calls)})
+
+        debug(f"emit_subagent success: agent_id={subagent.agent_id[:8]}, trace_id={subagent_obs.trace_id}")
+
+    except Exception as e:
+        error(f"emit_subagent failed: {e}")
+        raise
 
 # ----------------- Main -----------------
 def main() -> int:
@@ -695,6 +671,7 @@ def main() -> int:
     host = os.environ.get("CC_LANGFUSE_BASE_URL") or os.environ.get("LANGFUSE_BASE_URL") or "https://cloud.langfuse.com"
 
     if not public_key or not secret_key:
+        debug("Missing Langfuse credentials")
         return 0
 
     payload = read_hook_payload()
@@ -710,7 +687,8 @@ def main() -> int:
 
     try:
         langfuse = Langfuse(public_key=public_key, secret_key=secret_key, host=host)
-    except Exception:
+    except Exception as e:
+        error(f"Failed to initialize Langfuse: {e}")
         return 0
 
     try:
@@ -731,7 +709,6 @@ def main() -> int:
                 save_state(state)
                 return 0
 
-            # emit turns
             emitted = 0
             for t in turns:
                 emitted += 1
@@ -743,7 +720,6 @@ def main() -> int:
 
             ss.turn_count += emitted
 
-            # emit subagents from progress messages
             subagents = build_subagents(msgs)
             subagent_count = 0
             for sa_key, sa in subagents.items():
@@ -758,15 +734,16 @@ def main() -> int:
 
         try:
             langfuse.flush()
-        except Exception:
-            pass
+            debug("Langfuse flush completed")
+        except Exception as e:
+            error(f"Langfuse flush failed: {e}")
 
         dur = time.time() - start
         info(f"Processed {emitted} turns, {subagent_count} subagents in {dur:.2f}s (session={session_id})")
         return 0
 
     except Exception as e:
-        debug(f"Unexpected failure: {e}")
+        error(f"Unexpected failure: {e}")
         return 0
 
     finally:
