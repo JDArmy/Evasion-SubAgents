@@ -39,10 +39,21 @@ Generate and compile shellcode loaders using components from the loader knowledg
 
 ## Security Rules
 
-- **ONLY** use `samples/calc.bin` for shellcode data
-- **NEVER** use external code or shellcode
+- **DEFAULT** shellcode: `samples/calc.bin` (safe testing)
+- **CUSTOM** shellcode: Accept user-provided `.bin` files via `--shellcode` argument
 - **ALWAYS** record results in `scenarios.json`
 - **DO NOT** run or test the generated executables
+
+## Shellcode File Handling
+
+When user specifies a shellcode file:
+1. Accept `.bin` file path from `--shellcode <path>` or positional argument
+2. Validate file exists and is readable
+3. Read shellcode bytes and embed into generated loader
+4. Record the shellcode file path in `scenarios.json`
+
+Default behavior (no shellcode specified):
+- Use `samples/calc.bin` as fallback
 
 ## Workflow
 

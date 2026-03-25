@@ -208,11 +208,23 @@ evasion-agent-teams/
 从 loader 知识库生成 shellcode loader。
 
 ```bash
-/loader_generate                  # 单个随机 loader
-/loader_generate 5                # 批量生成 5 个
-/loader_generate --executor callback  # 指定执行方式
-/loader_generate --complexity simple  # 按复杂度筛选
+/loader_generate                              # 单个随机 loader (默认 calc.bin)
+/loader_generate 5                            # 批量生成 5 个
+/loader_generate --shellcode path/to/sc.bin   # 使用自定义 shellcode
+/loader_generate my.bin                       # 简写: 指定 shellcode 文件
+/loader_generate 3 --shellcode custom.bin     # 批量 + 自定义 shellcode
+/loader_generate --executor callback          # 指定执行方式
+/loader_generate --complexity simple          # 按复杂度筛选
+/loader_generate --language rust              # Rust 语言
 ```
+
+**Shellcode 参数：**
+
+| 参数格式 | 说明 |
+|----------|------|
+| 无参数 | 使用默认 `samples/calc.bin` |
+| `--shellcode <path>` | 指定自定义 bin 文件 |
+| `<file.bin>` | 简写形式，直接传入 bin 文件路径 |
 
 **流程：**
 1. 查询 `loader_techniques.json` 获取组件库
@@ -403,8 +415,8 @@ python lib/knowledge_manager.py import --input backup.json
 | Agent | 禁止 | 允许 |
 |-------|------|------|
 | research-agent | 编译/执行外部代码，使用外部 shellcode | 分析模式，更新知识库 |
-| loadergen-agent | 使用外部代码，使用外部 shellcode | 仅使用 samples/calc.bin |
-| evasion-agent | 使用外部代码，执行恶意 shellcode | 仅修改用户代码，仅用 calc.bin 测试 |
+| loadergen-agent | 执行生成的可执行文件 | 使用 samples/calc.bin 或用户指定的 bin 文件 |
+| evasion-agent | 执行恶意 shellcode | 修改用户代码，用 calc.bin 或用户指定文件测试 |
 | c2-evasion-agent | 执行恶意操作，破坏性修改 | 分析源码，修改规避特征 |
 
 ## 故障排除

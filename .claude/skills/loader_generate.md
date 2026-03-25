@@ -61,7 +61,31 @@ python lib/knowledge_manager.py random-combination --complexity simple
 
 ### Step 4: Generate Code
 
-Load `samples/calc.bin` and generate code in the selected language.
+Load shellcode from specified file or default to `samples/calc.bin`.
+
+#### Shellcode File Resolution
+
+```
+--shellcode <path>    → Use specified file
+<file.bin>            → Treat as shellcode file (shorthand)
+No argument           → Use samples/calc.bin
+```
+
+#### Validate Shellcode File
+
+```bash
+# Check file exists
+if [ ! -f "$SHELLCODE_FILE" ]; then
+    echo "Error: Shellcode file not found: $SHELLCODE_FILE"
+    exit 1
+fi
+
+# Check file size
+SIZE=$(stat -c%s "$SHELLCODE_FILE")
+echo "Shellcode size: $SIZE bytes"
+```
+
+#### Embed Shellcode into Code
 
 #### C Template
 
@@ -191,10 +215,11 @@ python lib/knowledge_manager.py add-loader-technique \
 ## Important Rules
 
 1. **ALWAYS** check `scenarios.json` before generating to avoid duplicates
-2. **ALWAYS** use `samples/calc.bin` only (no other shellcode)
-3. **ALWAYS** record generated combinations to knowledge base
-4. **NEVER** run or test the generated executables - compilation success is sufficient
-5. Use absolute paths for Python commands
+2. **ACCEPT** user-provided shellcode files via `--shellcode` argument or positional `.bin` argument
+3. **DEFAULT** to `samples/calc.bin` when no shellcode specified
+4. **ALWAYS** record generated combinations to knowledge base (include shellcode path)
+5. **NEVER** run or test the generated executables - compilation success is sufficient
+6. Use absolute paths for Python commands
 
 ## Output Format
 
