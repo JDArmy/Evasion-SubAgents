@@ -1,6 +1,6 @@
 # Evasion SubAgents
 
-基于 Claude Code 的免杀技术研究与 Shellcode Loader 生成框架。
+基于 Claude Code 的免杀技术Subagents集合。
 
 ## 项目概述
 
