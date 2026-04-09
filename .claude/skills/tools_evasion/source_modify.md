@@ -374,3 +374,42 @@ cargo build --release
 6. **No random changes** - Only modify what detection rules target
 7. **Prioritize low-risk** - Use compiler flags before source changes
 8. **Verify all patterns** - Re-check all detection patterns after changes
+
+## 7. CRITICAL: Fixed-Length Protocol Fields
+
+### ⚠️ 核心原则
+
+**修改网络工具的字符串常量时，必须保持原有长度！**
+
+### 高风险字符串类型
+
+| 类型 | 风险 | 原因 |
+|------|------|------|
+| 协议UUID/标识符 | ❌ 高 | 固定长度字段 |
+| Magic bytes | ❌ 高 | 协议握手验证 |
+| 消息头字段 | ❌ 高 | 二进制解析依赖 |
+| 日志消息 | ✅ 低 | 不参与协议解析 |
+| Banner文本 | ✅ 低 | 纯显示用途 |
+| 错误消息 | ✅ 低 | 纯显示用途 |
+
+### 修改前检查
+
+```bash
+# 1. 检查固定长度读取
+grep -rn "make(\[\]byte" --include="*.go"
+grep -rn "io.ReadFull" --include="*.go"
+grep -rn "recv(" --include="*.c"
+
+# 2. 检查结构体定义
+grep -rn "type.*struct" --include="*.go" | grep -i "header\|message"
+
+# 3. 验证字符串长度
+# 原始: len("IAMADMINXD") = 10
+# 修改: len("CTRL-00001") = 10 ✅
+```
+
+### 修改规则
+
+1. **计数长度** - 新字符串长度必须等于原长度
+2. **检查用途** - 确认字符串是否参与协议解析
+3. **立即测试** - 修改后立即测试连接功能
