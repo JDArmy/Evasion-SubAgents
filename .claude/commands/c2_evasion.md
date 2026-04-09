@@ -22,11 +22,11 @@ Launch the c2-evasion-agent to analyze and modify C2 framework source code.
 3. **Per-rule analysis** - Creates separate analysis for EACH rule with evasion strategies
 4. **Proactively searches** for sensitive strings (even if YARA rules are hex-only)
 5. **Modifies source code** - Compiler flags FIRST, then source changes
-6. **Documents all changes** in `./yara/<c2_name>/`
+6. **Documents all changes** in `./rules/<c2_name>/`
 
 ## CRITICAL: Per-Rule Analysis
 
-For EACH YARA/Sigma rule, create `./yara/<c2_name>/rule_analysis/<rule_name>.md`:
+For EACH YARA/Sigma rule, create `./rules/<c2_name>/rule_analysis/<rule_name>.md`:
 - Parse all patterns ($a1, $s1, hex, regex)
 - Identify pattern source in code
 - Develop evasion strategies with priority:
@@ -55,10 +55,10 @@ For EACH YARA/Sigma rule, create `./yara/<c2_name>/rule_analysis/<rule_name>.md`
 ## Output
 
 ```
-./yara/<c2_name>/
-├── yara_rules/              # Found YARA rules
-├── sigma_rules/             # Found Sigma rules
-├── network_rules/           # Found network rules
+./rules/<c2_name>/
+├── yara/              # Found YARA rules
+├── sigma/             # Found Sigma rules
+├── network/           # Found network rules
 ├── rule_analysis/           # Per-rule analysis files
 │   ├── Windows_Trojan_X.md
 │   └── ...

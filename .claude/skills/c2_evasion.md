@@ -83,7 +83,7 @@ For EACH YARA/Sigma rule:
    - **Priority 3**: Source code modifications
    - **Priority 4**: Function/struct refactoring
 4. **Select best strategy** and implement
-5. **Document** in `./yara/<c2_name>/rule_analysis/<rule_name>.md`
+5. **Document** in `./rules/<c2_name>/rule_analysis/<rule_name>.md`
 
 **Decision Matrix:**
 
@@ -128,7 +128,7 @@ grep -rn "taskProcess" <path>   # Should return nothing
 
 ## Phase 6: Documentation
 
-Create `./yara/<c2_name>/modifications_summary.md`:
+Create `./rules/<c2_name>/modifications_summary.md`:
 
 ```markdown
 # C2 Evasion Report
@@ -168,10 +168,10 @@ Create `./yara/<c2_name>/modifications_summary.md`:
 ## Output Directory
 
 ```
-./yara/<c2_name>/
-├── yara_rules/
-├── sigma_rules/
-├── network_rules/
+./rules/<c2_name>/
+├── yara/
+├── sigma/
+├── network/
 ├── rule_analysis/
 │   └── <rule_name>.md      # Per-rule analysis
 ├── binary_assets/

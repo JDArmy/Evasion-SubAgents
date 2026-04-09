@@ -112,7 +112,7 @@ Read `references/detection_search.md` for detailed commands. Execute:
 1. YARA search (multiple keywords, multiple repos)
 2. Sigma search
 3. Network/IDS rule search
-4. Save all rules to `./yara/<c2_name>/`
+4. Save all rules to `./rules/<c2_name>/`
 
 ### Phase 3: Per-Rule Analysis & Evasion Planning
 
@@ -182,7 +182,7 @@ Pattern $a2:
 [Command to verify pattern removed]
 ```
 
-**Output**: `./yara/<c2_name>/rule_analysis/<rule_name>.md`
+**Output**: `./rules/<c2_name>/rule_analysis/<rule_name>.md`
 
 **After this phase, you will know exactly what modifications are needed.**
 
@@ -194,7 +194,7 @@ Read `references/binary_analysis.md`. Check:
 - Resource files (.rc, .res)
 - Config templates (.json, .yaml)
 
-**Output**: `./yara/<c2_name>/binary_assets/analysis.md`
+**Output**: `./rules/<c2_name>/binary_assets/analysis.md`
 
 ### Phase 3.6: Hex Pattern Analysis
 
@@ -204,7 +204,7 @@ Read `references/hex_analysis.md`. For each hex pattern:
 3. Determine if compiler flags can evade
 4. Check Makefile for compiler flag opportunities
 
-**Output**: `./yara/<c2_name>/hex_analysis.md`
+**Output**: `./rules/<c2_name>/hex_analysis.md`
 
 ### Phase 3.7: Proactive String Search
 
@@ -244,7 +244,7 @@ For EACH detection rule:
 
 ### Phase 6: Documentation
 
-Create `./yara/<c2_name>/modifications_summary.md`:
+Create `./rules/<c2_name>/modifications_summary.md`:
 
 ```markdown
 # C2 Evasion Report
@@ -274,12 +274,12 @@ Create `./yara/<c2_name>/modifications_summary.md`:
 ## Output Directory Structure
 
 ```
-./yara/<c2_name>/
-├── yara_rules/
+./rules/<c2_name>/
+├── yara/
 │   └── *.yar
-├── sigma_rules/
+├── sigma/
 │   └── *.yml
-├── network_rules/
+├── network/
 │   └── *.rules
 ├── rule_analysis/
 │   └── <rule_name>.md      # Per-rule analysis

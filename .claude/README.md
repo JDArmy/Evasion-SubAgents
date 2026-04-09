@@ -24,6 +24,7 @@ This toolkit is used for:
 | **loadergen-agent** | Generate shellcode loaders from knowledge base | `/loader_generate` |
 | **evasion-agent** | Integrate evasion techniques into existing loaders | `/evasion_integrate` |
 | **c2-evasion-agent** | Analyze C2 source, find detection rules, modify code | `/c2_evasion` |
+| **tools-evasion-agent** | Analyze pen-test tools, find detection rules, modify source | `/tools_evasion` |
 
 ## Commands
 
@@ -63,6 +64,15 @@ Analyze C2 framework and modify source for detection evasion.
 /c2_evasion ./mythic-agent
 ```
 
+### `/tools_evasion <path>`
+Analyze penetration testing tool and modify source for detection evasion.
+
+```bash
+/tools_evasion ./crackmapexec
+/tools_evasion ./mimikatz
+/tools_evasion ./nmap
+```
+
 ## Directory Structure
 
 ```
@@ -71,17 +81,20 @@ Analyze C2 framework and modify source for detection evasion.
 │   ├── research-agent.md
 │   ├── loadergen-agent.md
 │   ├── evasion-agent.md
-│   └── c2-evasion-agent.md
+│   ├── c2-evasion-agent.md
+│   └── tools-evasion-agent.md
 ├── commands/         # User commands
 │   ├── research.md
 │   ├── loader_generate.md
 │   ├── evasion_integrate.md
-│   └── c2_evasion.md
+│   ├── c2_evasion.md
+│   └── tools_evasion.md
 ├── skills/           # Detailed skill instructions
 │   ├── research.md
 │   ├── loader_generate.md
 │   ├── evasion_integrate.md
-│   └── c2_evasion.md
+│   ├── c2_evasion/
+│   └── tools_evasion/
 └── README.md
 
 knowledge-base/       # Knowledge storage
@@ -91,6 +104,16 @@ knowledge-base/       # Knowledge storage
 
 lib/                  # Utility scripts
 └── knowledge_manager.py
+
+rules/                # Detection rules and analysis results
+├── {tool_name}/      # Per-tool analysis directory
+│   ├── yara/         # YARA rules
+│   ├── sigma/        # Sigma rules
+│   ├── network/      # Network rules
+│   ├── tool_profile.md
+│   ├── behavior_analysis.md
+│   └── modifications_summary.md
+└── README.md
 
 samples/              # Test samples
 └── calc.bin
@@ -119,6 +142,15 @@ python lib/knowledge_manager.py add-evasion --name "..." --type "api_obfuscation
 # Check duplicates
 python lib/knowledge_manager.py dedup-check --name "..."
 ```
+
+## Rules Directory
+
+The `rules/` directory stores detection rules and analysis results:
+
+- **YARA Rules**: File/memory pattern matching rules
+- **Sigma Rules**: Log-based detection rules
+- **Network Rules**: IDS/IPS signatures
+- **Analysis Results**: Per-tool behavior analysis and modification reports
 
 ## Security Rules
 

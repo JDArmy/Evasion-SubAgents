@@ -56,12 +56,12 @@ gh search code "<c2_name> zeek" --extension zeek
 Save all found rules to:
 
 ```
-./yara/<c2_name>/
-├── yara_rules/
+./rules/<c2_name>/
+├── yara/
 │   └── *.yar
-├── sigma_rules/
+├── sigma/
 │   └── *.yml
-├── network_rules/
+├── network/
 │   └── *.rules
 └── detection_analysis.md
 ```
