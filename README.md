@@ -12,6 +12,7 @@
 | **loadergen-agent** | 从 loader 知识库组合组件，生成 loader | `loader_generate` |
 | **evasion-agent** | 将 evasion 技术集成到现有 loader | `evasion_integrate` |
 | **c2-evasion-agent** | 分析 C2 框架源码，查找检测规则，修改源码免杀 | `c2_evasion` |
+| **tools-evasion-agent** | 分析渗透测试工具，查找检测规则，修改源码免杀 | `tools_evasion` |
 
 
 ## 环境要求
@@ -152,6 +153,7 @@ nano ~/.claude/CLAUDE.md
 # /loader_generate - Generate shellcode loaders
 # /evasion_integrate - Integrate evasion techniques
 # /c2_evasion - C2 framework evasion analysis and modification
+# /tools_evasion - Penetration testing tools evasion analysis
 ```
 
 ## 架构
@@ -163,8 +165,9 @@ evasion-agent-teams/
 ├── agents/
 │   ├── research-agent.md        # 研究技术
 │   ├── loadergen-agent.md       # 生成 loader
-│   └── evasion-agent.md         # 集成 evasion
-│   └── c2-evasion-agent.md      # C2 免杀
+│   ├── evasion-agent.md         # 集成 evasion
+│   ├── c2-evasion-agent.md      # C2 免杀
+│   └── tools-evasion-agent.md   # 工具免杀
 ├── skills/
 │   ├── research/
 │   │   └── SKILL.md             # 搜索分析技能
@@ -172,13 +175,16 @@ evasion-agent-teams/
 │   │   └── SKILL.md             # loader 生成技能
 │   ├── evasion_integrate/
 │   │   └── SKILL.md             # evasion 集成技能
-│   └── c2_evasion/
-│       └── SKILL.md             # C2 免杀技能
+│   ├── c2_evasion/
+│   │   └── SKILL.md             # C2 免杀技能
+│   └── tools_evasion/
+│       └── SKILL.md             # 工具免杀技能
 ├── commands/
 │   ├── research.md              # /research
 │   ├── loader_generate.md       # /loader_generate
 │   ├── evasion_integrate.md     # /evasion_integrate
-│   └── c2_evasion.md            # /c2_evasion
+│   ├── c2_evasion.md            # /c2_evasion
+│   └── tools_evasion.md         # /tools_evasion
 ├── lib/
 │   └── knowledge_manager.py
 ├── knowledge-base/
@@ -266,6 +272,30 @@ evasion-agent-teams/
 3. 识别特征字符串和模式
 4. 修改源码规避检测
 5. 验证修改后功能正常
+
+### /tools_evasion
+
+对渗透测试工具进行免杀改造。
+
+```bash
+/tools_evasion /path/to/tool/source    # 分析并修改工具源码
+```
+
+**流程：**
+1. 分析工具源码结构
+2. 搜索 YARA/Sigma 等检测规则
+3. 识别特征字符串和模式
+4. 修改源码规避检测
+5. 编译测试验证功能
+
+**支持的检测类型：**
+- YARA 规则（字符串、十六进制、正则）
+- Sigma 规则（进程创建、网络连接等）
+- 网络流量特征
+
+**注意：**
+- ⚠️ 修改协议字符串时必须保持长度不变
+- ⚠️ 网络工具的固定长度字段不可改变长度
 
 ## 知识库
 
@@ -418,6 +448,7 @@ python lib/knowledge_manager.py import --input backup.json
 | loadergen-agent | 执行生成的可执行文件 | 使用 samples/calc.bin 或用户指定的 bin 文件 |
 | evasion-agent | 执行恶意 shellcode | 修改用户代码，用 calc.bin 或用户指定文件测试 |
 | c2-evasion-agent | 执行恶意操作，破坏性修改 | 分析源码，修改规避特征 |
+| tools-evasion-agent | 执行恶意操作，破坏性修改 | 分析源码，修改规避特征，编译验证 |
 
 ## 故障排除
 
